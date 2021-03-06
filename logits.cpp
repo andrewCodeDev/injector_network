@@ -166,7 +166,9 @@ public:
   logit( std::size_t num_s, std::size_t s_size ){
     sensors.reserve(num_s); while( num_s > 0 ){ sensors.emplace_back(s_size); --num_s; };
    };
-  logit& operator=(const logit& other) = default;  
+ 
+  logit& operator=(const logit& other) = default;
+  logit& operator=(const num& x){ stimuli = x; return *this; }
   
   num send() const { return stimuli; }
 
@@ -189,12 +191,17 @@ public:
     while( rmv_s > 0 ){ sensors.pop_back(); --rmv_s; }
   }
 
+
+  template<class functor> void transform(functor&& f ){ stimuli = f(stimuli); }
+
   void initialize( std::size_t new_s, const std::size_t& n_terms ) {
     add_sensor(new_s, n_terms);
     state = false; // state only becomes true if external stimulation is greater than 0
   };
 
   void add_dx( const num& dx ){ error += dx; }
+  void mul_dx( const num& dx ){ error *= dx; }
+  num  get_dx(){ return error; }
 
   void calibrate( const std::size_t& i, const num& x, num scale = 1 ){ sensors[i].calibrate(x, error, scale); }
 
@@ -217,9 +224,16 @@ public:
   auto rbegin() { return sensors.rbegin(); }
   auto rend()   { return sensors.rend();   }
 
-  logit& operator=(const num& x){ stimuli = x; return *this; }
-
   std::size_t size() const { return sensors.size(); }
+
+  friend bool operator==( const logit& lhs, const logit& rhs ){ return lhs.stimuli == rhs.stimuli; }
+  friend bool operator!=( const logit& lhs, const logit& rhs ){ return lhs.stimuli != rhs.stimuli; }
+
+  friend bool operator<=( const logit& lhs, const logit& rhs ){ return lhs.stimuli <= rhs.stimuli; }
+  friend bool operator>=( const logit& lhs, const logit& rhs ){ return lhs.stimuli >= rhs.stimuli; }
+
+  friend bool operator<( const logit& lhs, const logit& rhs ){ return lhs.stimuli < rhs.stimuli; }
+  friend bool operator>( const logit& lhs, const logit& rhs ){ return lhs.stimuli > rhs.stimuli; }
 };
 
 
@@ -238,6 +252,8 @@ namespace grid {
     );
   }
 
+// INJECTOR CLASS !!!!
+/*
   template <
     std::floating_point num,
     std::size_t         rows,
@@ -251,8 +267,8 @@ namespace grid {
 
   public:
 
-    injector( const std::size_t& inp_size, const std::size_t& out_size, const std::size_t& n_terms ){
-      initialize(inp_size, out_size, n_terms);
+    injector( const std::size_t& inp_size, const std::size_t& n_terms ){
+      initialize(inp_size, n_terms);
     };
 
     const std::vector<logit<num>>& output() const { return logits.back(); }
@@ -299,36 +315,6 @@ namespace grid {
 
     template<class container>
     void calibrate( const container& trg ){
-
-      std::size_t s_idx{0};
-      for( logit<num>& l_pos : logits.back() )
-      for(  const num& v_trg : trg ){
-        l_pos.add_dx( l_pos.send() - v_trg );
-      }
-
-      for( std::size_t i{rows-1}; 0 < i; --i )
-      for( logit<num>& l_pos : logits[i]     ){
-      for( logit<num>& l_inp : logits[i-1] ){        
-        l_inp.add_dx( l_pos.dy_dx(s_idx, l_inp.send()));
-        l_pos.calibrate(s_idx, l_inp.send());
-        ++s_idx;
-      }
-        s_idx = 0; l_pos.zero_error();
-      }
-      
-
-
-      for( logit<num>& l_pos : logits.front() ){
-      do{
-
-        l_pos.calibrate(s_idx, (num)cols - inp_memo[s_idx]);
-        // l_pos.calibrate(s_idx, (num)0.0, (num)cols - inp_memo[s_idx]);
-        // l_pos.calibrate(s_idx, (num)1.0,             inp_memo[s_idx]);
-      }while( ++s_idx < inp_memo.size() );
-        s_idx = 0; l_pos.zero_error();
-      }
-
-      std::fill(inp_memo.begin(), inp_memo.end(), (num)0);
 
     }
 
@@ -377,31 +363,155 @@ namespace grid {
     }
 
   };
+*/
+
+// switch~~~~~~~~~~~~~~~~~~~~
+
+  template<std::floating_point num> struct sigmoid{
+    num operator()( const num& x ){ return (num)1 / ((num)1 + std::exp(-x)); }
+  };
+
+  template <
+    std::floating_point num
+  > struct binary_switch {
+
+    num error{0};
+
+    std::pair<logit<num>, logit<num>> l_pair;
+
+    binary_switch( const std::size_t& n_terms ){
+      l_pair.first.add_sensor(1, n_terms);
+      l_pair.second.add_sensor(1, n_terms);
+    };
+
+    bool eval(const num& x, const num& y) { forward(x, y); return ( l_pair.first.send() < l_pair.second.send() ) ? false : true; }
+
+    template<class container>
+    void forward( const container& inp ){
+
+      l_pair.first.receive(0, inp[0]); 
+
+      l_pair.first();
+
+      l_pair.second.receive(0, inp[1]); 
+      
+      l_pair.second();
+
+      num denom = std::exp(l_pair.first.send()) +  std::exp(l_pair.second.send());
+
+      l_pair.first  = std::exp(l_pair.first.send())  / denom;
+      l_pair.second = std::exp(l_pair.second.send()) / denom;
+
+    }
+
+    void forward( const num& x, const num& y){
+
+      l_pair.first.receive(0, x); 
+
+      l_pair.first();
+
+      l_pair.second.receive(0, y); 
+      
+      l_pair.second();
+
+      num denom = std::exp(l_pair.first.send()) +  std::exp(l_pair.second.send());
+
+      l_pair.first  = std::exp(l_pair.first.send()) / denom;
+      l_pair.second = std::exp(l_pair.second.send()) / denom;
+    }
+
+
+    template<class container_a, class container_b>
+    void calibrate( const container_a &inp, const container_b& v_trg ){
+
+        l_pair.first.add_dx(l_pair.first.send() - v_trg[0]);
+        l_pair.first.calibrate(0, inp[0]);
+
+        l_pair.second.add_dx(l_pair.second.send() - v_trg[1]);
+        l_pair.second.calibrate(0, inp[1]);
+
+      l_pair.first.zero_error();
+      l_pair.second.zero_error(); 
+
+    }
+
+    // void display_states(){
+    //   for(auto& m : data){
+    //     std::cout << "switch states: ";
+    //     std::cout << m.lhs.is_on() << ' ';
+    //     std::cout << m.rhs.is_on() << ' ';
+    //     std::cout << m.mid.is_on() << "\n\n";
+    //   }
+    // }
+
+    // void display_values(){
+    //   for(auto& m : data){
+    //     std::cout << "switch values: ";
+    //     std::cout << m.lhs.send() << ' ';
+    //     std::cout << m.rhs.send() << ' ';
+    //     std::cout << m.mid.send() << "\n\n";
+    //   }
+    // }
+
+    // void display_formulas(){
+    //   for(auto& m : data){
+    //     standard_form(m.lhs[0]); std::cout << '\n';
+    //     standard_form(m.rhs[0]); std::cout << '\n';
+    //     standard_form(m.mid[0]);
+    //     standard_form(m.mid[1]); std::cout << '\n';
+    //   }
+    // }
+
+    void display_output(){
+      std::cout << '{' << l_pair.first.send() << ", " << l_pair.second.send() << "}\n";
+    }
+
+  };
 
 }
 
 int main(void){
 
-  std::vector<float> mtx(4, 0);
-  std::vector<float> trg(4, 0);
+  // std::vector<float> mtx(4, 0);
+  // std::vector<float> trg(4, 0);
 
-  // std::vector<std::vector<float>> mtx {{1}, {0}};
-  // std::vector<std::vector<float>> trg {{1}, {0}};
+  std::vector<std::vector<float>> mtx {{0, 1}, {1, 0}, {0, 0}, {1, 1}};
+  std::vector<std::vector<float>> trg {{1, 0}, {1, 0}, {0, 1}, {1, 0}};
+
+
+  grid::binary_switch<float> b_switch(3);
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  grid::injector<float, 4, 4> l_grid(4, 4, 3);
+  // grid::injector<float, 4, 4> l_grid(4, 4, 3);
 
 
   // for(auto& vec : mtx ){ std::generate(vec.begin(), vec.end(), rand_gen<float>); }
 
-  l_grid.display_formulas();
+  // b_switch.display_formulas();
 
-  std::cout << l_grid.size() << "\n\n";
-  std::cout << "output: " << "\n";
+  for( std::size_t epoch{0}; epoch < 100'000; ++epoch ){
+    for( std::size_t i{0}; i < 4; ++i ){
 
-  for(auto &v : l_grid.output()) { std::cout << v.send() << ' '; } std::cout << '\n';
-  for(float &v : trg) { std::cout << v << ' '; }
+      b_switch.forward(mtx[i]);
+      b_switch.calibrate(mtx[i], trg[i]);
+
+      // if(epoch % 10'000 == 0) { 
+      
+      //   std::cout << "sample number: " << i << ' ';
+      // }
+
+    }
+  }
+  
+  b_switch.display_output();
+
+  // std::cout << std::boolalpha;
+
+  std::cout << b_switch.eval(0, 0); std::cout << '\n';
+  std::cout << b_switch.eval(0, 1); std::cout << '\n';
+  std::cout << b_switch.eval(1, 0); std::cout << '\n';
+  std::cout << b_switch.eval(1, 1);
 
 
   std::cout << '\n';
