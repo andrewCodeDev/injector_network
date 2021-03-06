@@ -200,7 +200,8 @@ public:
 
   num dy_dx( const std::size_t& i, const num& x ){ return sensors[i].dy_dx(x) * error; }
 
-  void zero_error() { error = (num)0.0; }
+  void zero_error() { error = (num)0; }
+  void show_error() { std::cout << "error: " << error << '\n'; }
 
   bool valid() const { return 0 < sensors.size(); }
   bool is_on() const { return state; }
@@ -241,7 +242,7 @@ namespace grid {
     std::floating_point num,
     std::size_t         rows,
     std::size_t         cols
-  > class symmetric {
+  > class injector {
 
   private:
 
@@ -250,12 +251,12 @@ namespace grid {
 
   public:
 
-    symmetric( const std::size_t& inp_size, const std::size_t& out_size, const std::size_t& n_terms ){
+    injector( const std::size_t& inp_size, const std::size_t& out_size, const std::size_t& n_terms ){
       initialize(inp_size, out_size, n_terms);
     };
 
-    const std::array<logit<num>, cols>& output() const { return logits.back(); }
-          std::array<logit<num>, cols>& output()       { return logits.back(); }
+    const std::vector<logit<num>>& output() const { return logits.back(); }
+          std::vector<logit<num>>& output()       { return logits.back(); }
 
     std::size_t row()  const { return rows; }
     std::size_t col()  const { return cols; }
@@ -266,7 +267,8 @@ namespace grid {
     }
 
     logit<num>& operator()( const std::size_t& i, const std::size_t& j ) { return logits[i][j]; }
-    std::array<logit<num>, cols>&     operator[]( const std::size_t& i ) { return logits[i];    }
+
+    std::vector<logit<num>>& operator[]( const std::size_t& i ) { return logits[i]; }
 
     template<class container>
     void forward( const container& inp ){
@@ -291,36 +293,9 @@ namespace grid {
           l_pos(); s_idx = 0;
         }
       }
-    }
 
-
-    // template<class container>
-    // void forward_with_state( const container& inp ){
-
-    //   std::transform(inp.cbegin(), inp.cend(), inp_memo.cbegin(), inp_memo.begin(), std::plus<num>{});
       
-    //   std::size_t s_idx{0};
-    //   for( logit<num>& l_pos : logits.front() ){
-    //   for( const num&  inp_v : inp )
-    //   {
-    //     l_pos.receive(s_idx++, inp_v); 
-    //   } 
-    //     l_pos(); s_idx = 0;
-    //   }
-
-    //   for( std::size_t i{1}; i < rows; ++i ){
-    //   for( logit<num>& l_pos : logits[i]   ){
-
-    //     if( !l_pos.is_on() ){ continue; }
-
-    //     for( logit<num>& l_inp : logits[i-1] )
-    //     {    
-    //       if( !l_inp.is_on() ){ l_pos.receive(s_idx++, l_inp.send()); }
-    //       l_pos(); s_idx = 0;
-    //     }
-    //     }
-    //   }
-    // }
+    }
 
     template<class container>
     void calibrate( const container& trg ){
@@ -328,29 +303,32 @@ namespace grid {
       std::size_t s_idx{0};
       for( logit<num>& l_pos : logits.back() )
       for(  const num& v_trg : trg ){
-
         l_pos.add_dx( l_pos.send() - v_trg );
       }
 
       for( std::size_t i{rows-1}; 0 < i; --i )
       for( logit<num>& l_pos : logits[i]     ){
-      for( logit<num>& l_inp : logits[i-1] ){
-        l_inp.add_dx( l_pos.dy_dx(s_idx, l_inp.send()) );
+      for( logit<num>& l_inp : logits[i-1] ){        
+        l_inp.add_dx( l_pos.dy_dx(s_idx, l_inp.send()));
         l_pos.calibrate(s_idx, l_inp.send());
         ++s_idx;
       }
         s_idx = 0; l_pos.zero_error();
       }
+      
+
 
       for( logit<num>& l_pos : logits.front() ){
       do{
-        l_pos.calibrate(s_idx, (num)0.0, (num)cols - inp_memo[s_idx]);
-        l_pos.calibrate(s_idx, (num)1.0,             inp_memo[s_idx]);
+
+        l_pos.calibrate(s_idx, (num)cols - inp_memo[s_idx]);
+        // l_pos.calibrate(s_idx, (num)0.0, (num)cols - inp_memo[s_idx]);
+        // l_pos.calibrate(s_idx, (num)1.0,             inp_memo[s_idx]);
       }while( ++s_idx < inp_memo.size() );
         s_idx = 0; l_pos.zero_error();
       }
 
-      inp_memo.clear();
+      std::fill(inp_memo.begin(), inp_memo.end(), (num)0);
 
     }
 
@@ -369,7 +347,7 @@ namespace grid {
         
       if(1 < rows * cols ) {
           logits.back().resize(out_size);
-        for( logit<num>& l_pos : logits.back() ) { l_pos.initialize(out_size, n_terms); }
+        for( logit<num>& l_pos : logits.back() ) { l_pos.initialize(cols, n_terms); }
       }
     }
 
@@ -404,15 +382,15 @@ namespace grid {
 
 int main(void){
 
-  std::vector<std::vector<float>> mtx {{1, 1},{1, 0},{0, 1},{0, 0}};
-  std::vector<std::vector<float>> trg {{0, 1},{1, 0},{1, 0},{0, 1}};
+  std::vector<float> mtx(4, 0);
+  std::vector<float> trg(4, 0);
 
   // std::vector<std::vector<float>> mtx {{1}, {0}};
   // std::vector<std::vector<float>> trg {{1}, {0}};
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  grid::symmetric<float, 2, 1> l_grid(2, 2, 3);
+  grid::injector<float, 4, 4> l_grid(4, 4, 3);
 
 
   // for(auto& vec : mtx ){ std::generate(vec.begin(), vec.end(), rand_gen<float>); }
@@ -420,20 +398,11 @@ int main(void){
   l_grid.display_formulas();
 
   std::cout << l_grid.size() << "\n\n";
+  std::cout << "output: " << "\n";
 
-  for( std::size_t epoch{0}; epoch < 4'000; ++epoch)
-  for( std::size_t i{0}; i < mtx.size();   ++i ){
-      l_grid.forward(mtx[i]);
-      l_grid.calibrate(trg[i]);
-      
-      if(epoch % 400 == 0){ l_grid.display_values(); }
-  }
+  for(auto &v : l_grid.output()) { std::cout << v.send() << ' '; } std::cout << '\n';
+  for(float &v : trg) { std::cout << v << ' '; }
 
-  l_grid.forward(mtx[0]);
-
-  l_grid.display_values();
-  l_grid.display_formulas();
-  
 
   std::cout << '\n';
   return 0;

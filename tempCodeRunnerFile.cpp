@@ -1,3 +1,6 @@
-      for( std::size_t i{1}; i < rows - 1; ++i ){
-        for( logit<num>& l_pos : logits[i] ) { l_pos.initialize(cols, n_terms); }
+      for( logit<num>& l_pos : logits.front() ){
+      do{
+        l_pos.calibrate(s_idx, (num)cols - inp_memo[s_idx]);
+      }while( ++s_idx < inp_memo.size() );
+        s_idx = 0; l_pos.zero_error();
       }
