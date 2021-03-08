@@ -2,15 +2,10 @@
 #define LOGITS_H
 
 #include <functional>
-#include <algorithm>
-#include <execution>
-#include <concepts>
 #include <assert.h>
 #include <iostream>
 #include <iterator>
-#include <numeric>
 #include <vector>
-#include <cmath>
 
 #include "activation.hpp"
 

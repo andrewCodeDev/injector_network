@@ -8,46 +8,24 @@
 
 */
 
+template<std::floating_point num>
+void operator+(std::array<num, 2>& lhs, const injector::binary<num>& rhs){
+  
+  lhs[0] += rhs.l_pair.first.send();
+  lhs[1] += rhs.l_pair.second.send();
+
+}
+
 
 int main(void){
 
+  injector::shallow<float> b_1(3);
 
-  std::string inp{"have a nice da"};
+  for(int epoch = 0; epoch < 10'000; ++epoch){
 
-  std::vector<std::vector<float>> mtx(inp.size(), std::vector<float>(25, 0));
-  std::vector<float> trg(25, 0); trg[23] = 1.0f;
-
-  sparse_encoder<float>(inp, mtx);
-
-  injector::shallow<float, 25> s_grid(mtx.size(), 25, 3);
-
-  for( std::size_t epoch{0}; epoch < 20'000; ++epoch ){
-  for( const auto& vec : mtx ){
-    s_grid.forward(vec); 
-  } 
-  
-    if( epoch % 2'000 == 0 ) { s_grid.display_output(); }
-    s_grid.calibrate(trg);
-      
   }
 
-
-
-  // std::vector<float> mtx(4, 0);
-  // std::vector<float> trg(4, 0);
-
-
-  std::vector<float> memo(4, 0);
-
-
-  // std::vector<std::vector<float>> trg {{1, 0}, {1, 0}, {0, 1}, {1, 0}};
-
-
-  // grid::binary_switch<float> b_switch(3);
-
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
+  
 
   std::cout << '\n';
   return 0;

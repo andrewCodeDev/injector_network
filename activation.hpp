@@ -1,6 +1,12 @@
 #ifndef ACTIVATION_H
 #define ACTIVATION_H
 
+#include <algorithm>
+#include <execution>
+#include <concepts>
+#include <numeric>
+#include <cmath>
+
 namespace activation {
 
   template<std::floating_point num> void softmax(auto& cntr){
