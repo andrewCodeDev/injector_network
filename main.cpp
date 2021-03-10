@@ -1,4 +1,5 @@
 #include "conflux.hpp"
+#include "samples.h"
 
 /*
 
@@ -15,6 +16,8 @@
 //   lhs[1] += rhs.l_pair.second.send();
 
 // }
+
+
 
 
 int main(void){
