@@ -5,10 +5,78 @@
 
 namespace injector {
 
+  template<std::floating_point num, std::size_t out_size, class logit_t> class shallow;
+
   template <
     std::floating_point num,
     std::size_t         out_size
-  > class shallow {
+  > class shallow< num, out_size, logit::imd >{
+
+  private:
+
+    std::array<logit::immediate<num>, out_size> logits;
+
+  public:
+
+    using logit_ref = logit::immediate<num>&;
+
+    shallow( const std::size_t& inp_size, const std::size_t& n_terms ){
+      for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
+    };
+
+    std::size_t size() const { return logits.size(); }
+
+    const logit_ref operator[]( const std::size_t& i ) const { return logits[i]; }
+          logit_ref operator[]( const std::size_t& i )       { return logits[i]; }
+
+    template<class container>
+    void forward( const container& inp ){
+
+      for( logit_ref l_pos : logits ){
+      for( std::size_t i{0}; i < logits.size(); ++i ){
+        l_pos.receive(i, inp[i]); 
+      }
+        l_pos();
+      }
+      activation::softmax<num>(logits);
+    }
+
+    template<class container_a, class container_b>
+    void calibrate( const container_a& inp, const container_b& trg ){
+
+      for( std::size_t i{0}; i < logits.size(); ++i ){
+        logits[i].add_dx( logits[i].send() - trg[i] );
+      }
+
+      for( logit_ref l_pos : logits ){
+      for( std::size_t i{0}; i < trg.size(); ++i ){
+        l_pos.calibrate(i, inp[i]);
+      }
+        l_pos.zero_error();
+      }
+    }
+
+    void display_output(){
+      for( const logit_ref l_pos : logits ){
+        std::cout << l_pos.send() << ' ';
+      } std::cout << '\n';
+    }
+
+    void display_formulas(){
+      for( const logit_ref l_pos : logits ){
+      for( std::size_t i{0}; i < logits.size(); ++i ){
+        standard_form(l_pos[i]);
+      } std::cout << '\n';
+      } std::cout << '\n';
+    }
+
+  };
+
+/*
+  template <
+    std::floating_point num,
+    std::size_t         out_size
+  > class shallow< num, out_size, logit::seq >{
 
   private:
 
@@ -86,14 +154,15 @@ namespace injector {
     }
 
   };
-
+*/
+  
   template <
     std::floating_point num
   > struct binary {
 
     num error{0};
 
-    std::pair<logit<num>, logit<num>> l_pair;
+    std::pair<logit::immediate<num>, logit::immediate<num>> l_pair;
 
     binary( const std::size_t& n_terms ){
       l_pair.first.add_sensor(1, n_terms);

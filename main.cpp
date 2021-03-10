@@ -8,22 +8,22 @@
 
 */
 
-template<std::floating_point num>
-void operator+(std::array<num, 2>& lhs, const injector::binary<num>& rhs){
+// template<std::floating_point num>
+// void operator+(std::array<num, 2>& lhs, const injector::binary<num>& rhs){
   
-  lhs[0] += rhs.l_pair.first.send();
-  lhs[1] += rhs.l_pair.second.send();
+//   lhs[0] += rhs.l_pair.first.send();
+//   lhs[1] += rhs.l_pair.second.send();
 
-}
+// }
 
 
 int main(void){
 
-  injector::shallow<float> b_1(3);
+  injector::shallow<float, 2, logit::imd> b_1(3);
 
-  for(int epoch = 0; epoch < 10'000; ++epoch){
+  // for(int epoch = 0; epoch < 10'000; ++epoch){
 
-  }
+  // }
 
   
 
