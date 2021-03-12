@@ -31,78 +31,40 @@ template <
 
 //sensor ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
 namespace logit {
 
-  struct imd { };
-  struct seq { };
+template <std::floating_point num> class immediate;
+template <std::floating_point num> class sequential;
 
-  template <std::floating_point num> class immediate;
-  template <std::floating_point num> class sequential;
+}
+
+namespace sensor {
 
   template <
     std::floating_point num
-  > class sensor {
+  > class IMDsensor {
 
-  private:
-    struct modifier { num coef{1}, rate{1}, center{0}; };
+    private:
 
-    std::vector<modifier> data; num signal{0};
+      struct modifier { num coef{1}, rate{1}, center{0}; };
 
-    friend class immediate<num>;
+      std::vector<modifier> data; 
+      
+      num signal{0};
 
-  public:
-    sensor() = default;
-    sensor(const size_t& size) : data(size){
-      for( auto& m : data ){
-        m.coef   = rand_gen<num>();
-        m.rate   = rand_gen<num>();
-        m.center = rand_gen<num>();
-      }
-    };
-    
-    const modifier& operator[](const std::size_t& i ) const { return data[i]; }
-          modifier& operator[](const std::size_t& i )       { return data[i]; }
+      friend class logit::immediate<num>;
 
-    num operator()( const num& x ){
-      signal = std::transform_reduce(std::execution::seq, data.cbegin(), data.cend(), static_cast<num>(0), std::plus<num>{},
-        [&x](const modifier& m)
-        {
-          return m.coef / (static_cast<num>(1) + std::exp(m.rate * (x - m.center)));
-        });
-      return signal;
-    }
-
-    sensor& operator++(){ data.emplace_back( modifier{} ); return *this; }
-    sensor& operator--(){ data.pop_back(); return *this; }
-    
-    // using friend function for commutative property
-    friend num operator+( const num& x, const sensor& s ) { return x + s.signal; }
-    friend num operator-( const num& x, const sensor& s ) { return x - s.signal; }
-    friend num operator*( const num& x, const sensor& s ) { return x * s.signal; }
-    friend num operator/( const num& x, const sensor& s ) { return x / s.signal; }
-
-    friend num operator+( const sensor& s, const num& x ) { return s.signal + x; }
-    friend num operator-( const sensor& s, const num& x ) { return s.signal - x; }
-    friend num operator*( const sensor& s, const num& x ) { return s.signal * x; }
-    friend num operator/( const sensor& s, const num& x ) { return s.signal / x; }
-
-    bool valid() { return 0 < data.size(); }
-
-    auto begin() const { return data.begin(); }
-    auto begin()       { return data.begin(); }
-    auto end()   const { return data.end(); }
-    auto end()         { return data.end(); }
-
-    auto cbegin() const { return data.cbegin(); }
-    auto cend()   const { return data.cend();   }
-
-    auto rbegin() { return data.rbegin(); }
-    auto rend()   { return data.rend();   }
-
-    std::size_t size() const { return data.size(); }
-
-    num dy_dx( const num& x, std::size_t n_drv = 1 ){
+    public:
+      IMDsensor() = default;
+      IMDsensor(const size_t& size) : data(size){
+        for( auto& m : data ){
+          m.coef   = rand_gen<num>();
+          m.rate   = rand_gen<num>();
+          m.center = rand_gen<num>();
+        }
+      };
+      
+      num dy_dx( const num& x, std::size_t n_drv = 1 ){
 
       assert( 0 < n_drv && n_drv < 3 );
 
@@ -129,207 +91,269 @@ namespace logit {
         return 0.0f; // otherwise it complains
       }
 
-    void calibrate( const num& x, const num& error, num scale = 1.0, num lr = 0.01 ){
+      void calibrate( const num& x, const num& error, num scale = 1.0, num lr = 0.01 ){
 
-      num one{1}, adj{error * lr}, e_p, denom;
+        num one{1}, adj{error * lr}, e_p, denom;
 
-        // NOTE! derivative with repect to c is the negation of the derivative with respect to x
-        
-      for( modifier& m : data ) {
-        e_p = std::exp(m.rate * (x - m.center)); 
-        denom = (one + e_p) * (one + e_p);
+          // NOTE! derivative with repect to c is the negation of the derivative with respect to x
+          
+        for( modifier& m : data ) {
+          e_p = std::exp(m.rate * (x - m.center)); 
+          denom = (one + e_p) * (one + e_p);
 
-        m.rate   -= scale * ((-m.coef * (x - m.center) * e_p ) / denom ) * adj;
-        m.center -= scale * (( m.coef * m.rate * e_p ) / denom ) * adj;
-        m.coef   -= scale * (one / (one + e_p)) * adj;
+          m.rate   -= scale * ((-m.coef * (x - m.center) * e_p ) / denom ) * adj;
+          m.center -= scale * (( m.coef * m.rate * e_p ) / denom ) * adj;
+          m.coef   -= scale * (one / (one + e_p)) * adj;
+        }
       }
-    }
+
+      num operator()( const num& x ){
+        signal = std::transform_reduce(std::execution::seq, data.cbegin(), data.cend(), static_cast<num>(0), std::plus<num>{},
+          [&x](const modifier& m)
+          {
+            return m.coef / (static_cast<num>(1) + std::exp(m.rate * (x - m.center)));
+          });
+        return signal;
+      }
+
+      const modifier& operator[](const std::size_t& i ) const { return data[i]; }
+            modifier& operator[](const std::size_t& i )       { return data[i]; }
+
+      IMDsensor& operator++(){ data.emplace_back( modifier{} ); return *this; }
+      IMDsensor& operator--(){ data.pop_back(); return *this; }
+      
+      // using friend function for commutative property
+
+      auto begin() const { return data.begin(); }
+      auto begin()       { return data.begin(); }
+      auto end()   const { return data.end(); }
+      auto end()         { return data.end(); }
+
+      auto cbegin() const { return data.cbegin(); }
+      auto cend()   const { return data.cend();   }
+
+      auto rbegin() { return data.rbegin(); }
+      auto rend()   { return data.rend();   }
+
+      std::size_t size() const { return data.size(); }
+
+      friend num operator+( const num& x, const IMDsensor& s ) { return x + s.signal; }
+      friend num operator-( const num& x, const IMDsensor& s ) { return x - s.signal; }
+      friend num operator*( const num& x, const IMDsensor& s ) { return x * s.signal; }
+      friend num operator/( const num& x, const IMDsensor& s ) { return x / s.signal; }
+
+      friend num operator+( const IMDsensor& s, const num& x ) { return s.signal + x; }
+      friend num operator-( const IMDsensor& s, const num& x ) { return s.signal - x; }
+      friend num operator*( const IMDsensor& s, const num& x ) { return s.signal * x; }
+      friend num operator/( const IMDsensor& s, const num& x ) { return s.signal / x; }
 
   };
 
-
+}
   // types ~~~~~~~~~~
 
 
-  template <
+namespace logit {
+
+  struct imd { };
+  struct seq { };
+
+  template < 
     std::floating_point num
   > class immediate {
 
-  private:
+    public:
+      using sns_type = sensor::IMDsensor<num>;
+      using  sns_ref = sns_type&;
+      using csns_ref = const sns_ref&;
 
-    num stimuli{0}, error{0};
-    std::vector<num> weights;
-    std::vector<sensor<num>> sensors;
+      immediate() = default;
+      immediate( const std::size_t& num_s ){ sensors.resize(num_s); };
 
-  public:
+      immediate( std::size_t num_s, std::size_t s_size ){ initialize(num_s, s_size); };
 
-    using sns_ref  = sensor<num>&;
-    using csns_ref = const sensor<num>&;
-
-    immediate() = default;
-    immediate( const std::size_t& num_s ){ sensors.resize(num_s); };
-
-    immediate( std::size_t num_s, std::size_t s_size ){ initialize(num_s, s_size); };
-
-    void initialize( std::size_t num_s, std::size_t s_size ){
-      sensors.reserve(num_s); 
-      weights.reserve(num_s); 
-      while( 0 < num_s-- ){ 
-        sensors.emplace_back(s_size);
-        weights.emplace_back(rand_gen<num>());
+      void initialize( std::size_t num_s, std::size_t s_size ){
+        sensors.reserve(num_s); 
+        weights.reserve(num_s); 
+        while( 0 < num_s-- ){ 
+          sensors.emplace_back(s_size);
+          weights.emplace_back(rand_gen<num>());
+        }
       }
-    }
-  
-    immediate& operator=(const immediate& other) = default;
-    immediate& operator=(const num& x){ stimuli = x; return *this; }
     
-    num send() const { return stimuli; }
-
-    csns_ref operator[](const std::size_t& i ) const { return sensors[i]; }
-     sns_ref operator[](const std::size_t& i )       { return sensors[i]; }
-
-    num operator()(){
-      stimuli = std::inner_product(sensors.cbegin(), sensors.cend(), weights.cbegin(), static_cast<num>(0));
-      return stimuli;
-    }
-
-    num receive( const std::size_t& i, const num& x ){ return sensors[i](x); }
-
-    void add_sensor( std::size_t new_s, const std::size_t& n_terms ){
-      while( 0 < new_s-- ){
-        sensors.emplace_back(sensor<num>(n_terms));
-        weights.emplace_back(rand_gen<num>());
-      }; 
-        sensors.shrink_to_fit();
-        weights.shrink_to_fit();
-    };
-
-    void rmv_sensor( std::size_t rmv_s ){
-      while( rmv_s > 0 ){ sensors.pop_back(); --rmv_s; }
-    }
-
-    template<class functor> void transform(const functor& f ){ stimuli = f(stimuli); }
-
-    void add_error( const num& dx ){ error += dx; }
-    void mul_error( const num& dx ){ error *= dx; }
-    num  get_error(){ return error; }
-
-    void calibrate( const std::size_t& i, const num& x, num scale = 1 ){
+      immediate& operator=(const immediate& other) = default;
+      immediate& operator=(const num& x){ stimuli = x; return *this; }
       
-      sensors[i].calibrate(x, error * weights[i], scale); 
-      weights[i] -= error * sensors[i].signal * (num)0.01;
-      
-    }
+      num send() const { return stimuli; }
 
-    num dy_dx( const std::size_t& i, const num& x ){ return sensors[i].dy_dx(x) * error; }
+      csns_ref operator[](const std::size_t& i ) const { return sensors[i]; }
+      sns_ref operator[](const std::size_t& i )       { return sensors[i]; }
 
-    void zero_error() { error = (num)0; }
-    void show_error() { std::cout << "error: " << error << '\n'; }
+      num operator()(){
+        stimuli = std::inner_product(sensors.cbegin(), sensors.cend(), weights.cbegin(), static_cast<num>(0));
+        return stimuli;
+      }
 
-    auto begin() const { return sensors.begin(); }
-    auto begin()       { return sensors.begin(); }
-    auto end()   const { return sensors.end(); }
-    auto end()         { return sensors.end(); }
+      num receive( const std::size_t& i, const num& x ){ return sensors[i](x); }
 
-    auto cbegin() const { return sensors.cbegin(); }
-    auto cend()   const { return sensors.cend();   }
+      void add_sensor( std::size_t new_s, const std::size_t& n_terms ){
+        while( 0 < new_s-- ){
+          sensors.emplace_back(sns_type(n_terms));
+          weights.emplace_back(rand_gen<num>());
+        }; 
+          sensors.shrink_to_fit();
+          weights.shrink_to_fit();
+      };
 
-    auto rbegin() { return sensors.rbegin(); }
-    auto rend()   { return sensors.rend();   }
+      void rmv_sensor( std::size_t rmv_s ){
+        while( 0 < rmv_s-- ){ sensors.pop_back(); }
+      }
 
-    std::size_t size() const { return sensors.size(); }
+      template<class functor> void transform(const functor& f ){ stimuli = f(stimuli); }
 
-    friend bool operator==( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli == rhs.stimuli; }
-    friend bool operator!=( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli != rhs.stimuli; }
+      void calibrate( const std::size_t& i, const num& x, num scale = 1 ){
+        
+        sensors[i].calibrate(x, error * weights[i], scale); 
+        weights[i] -= error * sensors[i].signal * (num)0.01;
+        
+      }
 
-    friend bool operator<=( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli <= rhs.stimuli; }
-    friend bool operator>=( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli >= rhs.stimuli; }
+      num dy_dx( const std::size_t& i, const num& x ){ return sensors[i].dy_dx(x) * error; }
 
-    friend bool operator<( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli < rhs.stimuli; }
-    friend bool operator>( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli > rhs.stimuli; }
+      void add_error( const num& dx ){ error += dx; }
+      void mul_error( const num& dx ){ error *= dx; }
+      num  get_error(){ return error; }
+      void zero_error() { error = (num)0; }
+      void show_error() { std::cout << "error: " << error << '\n'; }
+
+      auto begin() const { return sensors.begin(); }
+      auto end()   const { return sensors.end();   }
+
+      auto cbegin() const { return sensors.cbegin(); }
+      auto cend()   const { return sensors.cend();   }
+
+      auto begin() { return sensors.begin(); }
+      auto end()   { return sensors.end();   }
+
+      auto rbegin() { return sensors.rbegin(); }
+      auto rend()   { return sensors.rend();   }
+
+      std::size_t size() const { return sensors.size(); }
+
+      friend bool operator==( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli == rhs.stimuli; }
+      friend bool operator!=( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli != rhs.stimuli; }
+      friend bool operator<=( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli <= rhs.stimuli; }
+      friend bool operator>=( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli >= rhs.stimuli; }
+      friend bool operator< ( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli <  rhs.stimuli; }
+      friend bool operator> ( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli >  rhs.stimuli; }
+
+    private:
+      num stimuli{0}, error{0};
+      std::vector<num> weights;
+      std::vector<sensor::IMDsensor<num>> sensors;
   };
 
-/*
-  template <
-    std::floating_point num
-  > class sequential {
 
-  private:
 
-    std::vector<sensor<num>> sensors; num stimuli{0}, error{0};
+// template <
+//     std::floating_point num
+//   > class seq {
 
-  public:
+//   private:
 
-    using reference = sequential&;
+//     num stimuli{0}, error{0};
+//     std::vector<num> weights;
+//     std::vector<sensor<num>> sensors;
 
-    sequential() = default;
-    sequential( const std::size_t& num_s ){ sensors.resize(num_s); };
+//   public:
 
-    sequential( std::size_t num_s, std::size_t s_size ){
-      sensors.reserve(num_s); while( num_s > 0 ){ sensors.emplace_back(s_size); --num_s; };
-    };
+//     using sns_ref  = sensor<num>&;
+//     using csns_ref = const sensor<num>&;
+
+//     immediate() = default;
+//     immediate( const std::size_t& num_s ){ sensors.resize(num_s); };
+
+//     immediate( std::size_t num_s, std::size_t s_size ){ initialize(num_s, s_size); };
+
+//     void initialize( std::size_t num_s, std::size_t s_size ){
+//       sensors.reserve(num_s); 
+//       weights.reserve(num_s); 
+//       while( 0 < num_s-- ){ 
+//         sensors.emplace_back(s_size);
+//         weights.emplace_back(rand_gen<num>());
+//       }
+//     }
   
-    reference operator=(const reference other) = default;
-    reference operator=(const num& x){ stimuli = x; return *this; }
+//     immediate& operator=(const immediate& other) = default;
+//     immediate& operator=(const num& x){ stimuli = x; return *this; }
     
-    num send() const { return stimuli; }
+//     num send() const { return stimuli; }
 
-    const sensor<num>& operator[](const std::size_t& i ) const { return sensors[i]; }
-          sensor<num>& operator[](const std::size_t& i )       { return sensors[i]; }
+//     csns_ref operator[](const std::size_t& i ) const { return sensors[i]; }
+//      sns_ref operator[](const std::size_t& i )       { return sensors[i]; }
 
-    num operator()(){
-      stimuli = std::accumulate(sensors.cbegin(), sensors.cend(), static_cast<num>(0)) + (num)0.05 * stimuli;
-      return stimuli;
-    }
+//     num operator()(){
+//       stimuli = std::inner_product(sensors.cbegin(), sensors.cend(), weights.cbegin(), static_cast<num>(0));
+//       return stimuli;
+//     }
 
-    num receive( const std::size_t& i, const num& x ){ return sensors[i](x); }
+//     num receive( const std::size_t& i, const num& x ){ return sensors[i](x); }
 
-    void add_sensor( std::size_t new_s, const std::size_t& n_terms ){
-      while( 0 < new_s-- ){ sensors.emplace_back(sensor<num>(n_terms)); }; sensors.shrink_to_fit();
-    };
+//     void add_sensor( std::size_t new_s, const std::size_t& n_terms ){
+//       while( 0 < new_s-- ){
+//         sensors.emplace_back(sensor<num>(n_terms));
+//         weights.emplace_back(rand_gen<num>());
+//       }; 
+//         sensors.shrink_to_fit();
+//         weights.shrink_to_fit();
+//     };
 
-    void rmv_sensor( std::size_t rmv_s ){
-      while( rmv_s > 0 ){ sensors.pop_back(); --rmv_s; }
-    }
+//     void rmv_sensor( std::size_t rmv_s ){
+//       while( rmv_s > 0 ){ sensors.pop_back(); --rmv_s; }
+//     }
 
-    void initialize( std::size_t new_s, const std::size_t& n_terms ) {
-      add_sensor(new_s, n_terms);
-    };
+//     template<class functor> void transform(const functor& f ){ stimuli = f(stimuli); }
 
-    void add_dx( const num& dx ){ error += dx; }
-    void mul_dx( const num& dx ){ error *= dx; }
-    num  get_dx(){ return error; }
+//     void add_error( const num& dx ){ error += dx; }
+//     void mul_error( const num& dx ){ error *= dx; }
+//     num  get_error(){ return error; }
 
-    void calibrate( const std::size_t& i, const num& x, num scale = 1 ){ sensors[i].calibrate(x, error, scale); }
+//     void calibrate( const std::size_t& i, const num& x, num scale = 1 ){
+      
+//       sensors[i].calibrate(x, error * weights[i], scale); 
+//       weights[i] -= error * sensors[i].signal * (num)0.01;
+      
+//     }
 
-    num dy_dx( const std::size_t& i, const num& x ){ return sensors[i].dy_dx(x) * error; }
+//     num dy_dx( const std::size_t& i, const num& x ){ return sensors[i].dy_dx(x) * error; }
 
-    void zero_error() { error = (num)0; }
+//     void zero_error() { error = (num)0; }
+//     void show_error() { std::cout << "error: " << error << '\n'; }
 
-    auto begin() const { return sensors.begin(); }
-    auto begin()       { return sensors.begin(); }
-    auto end()   const { return sensors.end(); }
-    auto end()         { return sensors.end(); }
+//     auto begin() const { return sensors.begin(); }
+//     auto begin()       { return sensors.begin(); }
+//     auto end()   const { return sensors.end(); }
+//     auto end()         { return sensors.end(); }
 
-    auto cbegin() const { return sensors.cbegin(); }
-    auto cend()   const { return sensors.cend();   }
+//     auto cbegin() const { return sensors.cbegin(); }
+//     auto cend()   const { return sensors.cend();   }
 
-    auto rbegin() { return sensors.rbegin(); }
-    auto rend()   { return sensors.rend();   }
+//     auto rbegin() { return sensors.rbegin(); }
+//     auto rend()   { return sensors.rend();   }
 
-    std::size_t size() const { return sensors.size(); }
+//     std::size_t size() const { return sensors.size(); }
 
-    friend bool operator==( const reference lhs, const reference rhs ){ return lhs.stimuli == rhs.stimuli; }
-    friend bool operator!=( const reference lhs, const reference rhs ){ return lhs.stimuli != rhs.stimuli; }
+//     friend bool operator==( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli == rhs.stimuli; }
+//     friend bool operator!=( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli != rhs.stimuli; }
 
-    friend bool operator<=( const reference lhs, const reference rhs ){ return lhs.stimuli <= rhs.stimuli; }
-    friend bool operator>=( const reference lhs, const reference rhs ){ return lhs.stimuli >= rhs.stimuli; }
+//     friend bool operator<=( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli <= rhs.stimuli; }
+//     friend bool operator>=( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli >= rhs.stimuli; }
 
-    friend bool operator<( const reference lhs, const reference rhs ){ return lhs.stimuli < rhs.stimuli; }
-    friend bool operator>( const reference lhs, const reference rhs ){ return lhs.stimuli > rhs.stimuli; }
-  };
+//     friend bool operator<( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli < rhs.stimuli; }
+//     friend bool operator>( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli > rhs.stimuli; }
+//   };
 
-*/
+
 }
 
 #endif
