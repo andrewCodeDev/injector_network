@@ -24,11 +24,11 @@ namespace activation {
 
   template <std::floating_point num> void abs_max( auto& logits ){
 
-    num abs_max = std::numeric_limits<float>::lowest();
+    num min_stm = std::max_element(logits.cbegin(), logits.cend())->send();
+    num max_stm = std::min_element(logits.cbegin(), logits.cend())->send();
+    num rcp     = static_cast<num>(1) / (max_stm - min_stm);
 
-    for(auto& x : logits) { abs_max = std::max(std::abs(x.send()), abs_max); }
-    for(auto& x : logits) { x.send() /= abs_max; x.mul_error(abs_max); }
-
+    for(auto& x : logits) { x = (x.send() - min_stm) / rcp; x.mul_error(rcp); }
   }
 
 }
