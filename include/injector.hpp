@@ -84,8 +84,8 @@ namespace injector {
 
   public:
 
-    using logit_ref  =       logit::immediate<num>&;
     using clogit_ref = const logit::immediate<num>&;
+    using  logit_ref =       logit::immediate<num>&;
 
     shallow( const std::size_t& inp_size, const std::size_t& n_terms ){
       for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
@@ -98,13 +98,14 @@ namespace injector {
 
     template<class container>
     void forward( const container& inp ){
-
+      
       for( logit_ref l_pos : logits ){
-      for( std::size_t i{0}; i < logits.size(); ++i ){
+      for( std::size_t i{0}; i < inp.size(); ++i ){
         l_pos.receive(i, inp[i]); 
       }
         l_pos();
       }
+      activation::min_max<num>(logits);
       activation::softmax<num>(logits);
     }
 

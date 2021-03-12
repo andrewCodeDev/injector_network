@@ -27,7 +27,7 @@ namespace activation {
     num rcp = static_cast<num>(1) / ((*std::max_element(logits.cbegin(), logits.cend()) - min) + static_cast<num>(1e-4));
     
     std::transform( std::execution::seq,
-      logits.cbegin(), logits.cend(), logits.begin(), [&](const num& x) { return (x - min) * rcp; }
+      logits.cbegin(), logits.cend(), logits.begin(), [&](const auto& x) { return (x.send() - min) * rcp; }
     );
   }
 
