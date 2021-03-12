@@ -45,7 +45,7 @@ namespace encoder {
         target.resize(cols);
       }
 
-      const sparse_vec& cycle_inp(){ 
+      const sparse_vec& cycle_inp() { 
         if( current < limit ){
           return encoded_mtx[current++];
         }
@@ -54,7 +54,7 @@ namespace encoder {
           current = 1; return encoded_mtx[0];
         }
       }
-      const sparse_vec& get_trg() { return target; }
+      const sparse_vec& get_trg() const { return target; }
 
       std::size_t current_size(){ return limit; }
 

@@ -19,6 +19,21 @@ namespace activation {
     );
   }
 
+  template<std::floating_point num> void sigmoid(auto& cntr){
+    auto start = cntr.begin();
+
+    *start = (num)1 / ((num)1 + std::exp(-start->send()));
+  }
+
+}
+
+namespace indexing {
+  
+  template<std::floating_point num>
+  float linear(num x, num pos, num incr, num length)
+  { 
+    return -( (2.0f * x - 1.0f) * (incr - pos) / length ) + x ;
+  }
 }
 
 #endif

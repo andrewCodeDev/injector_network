@@ -1,0 +1,7 @@
+/*
+
+  total number of paths where at all rows have at least one active logit:
+
+    2^(r*c) - (sum|i=0...r-1|( r_C_i * [2^(c(r-i)) - 1] ) + 1);
+
+*/
