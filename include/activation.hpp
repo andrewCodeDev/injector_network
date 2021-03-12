@@ -22,7 +22,7 @@ namespace activation {
   }
 
 
-  template <std::floating_point num> void abs_max( auto& logits ){
+  template <std::floating_point num> void min_max( auto& logits ){
 
     num min_stm = std::max_element(logits.cbegin(), logits.cend())->send();
     num max_stm = std::min_element(logits.cbegin(), logits.cend())->send();

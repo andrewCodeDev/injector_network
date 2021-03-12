@@ -42,6 +42,7 @@ namespace encoder {
         for( auto& p : vocab ){ p.second = idx++; }
 
         for( sparse_vec& vec : encoded_mtx ) { vec.resize(cols); }
+        for( sparse_vec& vec : loading_mtx ) { vec.resize(cols); }
         target.resize(cols);
       }
 
@@ -105,6 +106,7 @@ namespace encoder {
 
       decoder_map vocab;
       sparse_mtx encoded_mtx;
+      sparse_mtx loading_mtx;
       sparse_vec target;
       std::size_t current{0}, limit{rows};
   };

@@ -108,15 +108,15 @@ namespace injector {
       }
         l_pos();
       }
-      activation::abs_max<num>(logits);
+      activation::min_max<num>(logits);
       activation::softmax<num>(logits);
     }
 
     template<class container>
-    void calibrate( container& trg ){
+    void calibrate( const container& trg ){
 
       for( std::size_t i{0}; i < logits.size(); ++i ){
-        logits[i].mul_error( logits[i].send() - trg[i] );
+        logits[i].mul_error(logits[i].send() - trg[i]);
         logits[i].calibrate();
       }
     }

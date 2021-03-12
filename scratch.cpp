@@ -8,8 +8,8 @@ int main(void){
   std::vector<float> test1{ 14, 16, -2, 7, -21, 8, 9 };
   std::vector<float> test2{ -14, -16, -2, -7, -21, -8, -9 };
 
-  activation::abs_max<float>(test1);
-  activation::abs_max<float>(test2);
+  activation::min_max<float>(test1);
+  activation::min_max<float>(test2);
 
 
   for(auto& x : test1) { std::cout << x << ' '; } std::cout << '\n';
