@@ -23,7 +23,7 @@ using namespace set2x2::nand_gate;
 
 int main(void){
 
-  injector::shallow<float, 2, logit::imd> b_1(2, 3);
+  injector::shallow<float, 2, logit::seq> b_1(2, 3);
   // injector::binary<float> b_1(3);
 
   for(int epoch = 0; epoch < 2'500; ++epoch){
@@ -34,9 +34,7 @@ int main(void){
 
       b_1.calibrate(inp[i], trg[i]);
 
-
     }
-
   }
 
   b_1.forward(inp[0]); b_1.display_output();

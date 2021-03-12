@@ -5,6 +5,7 @@
 #include <execution>
 #include <concepts>
 #include <numeric>
+#include <limits>
 #include <cmath>
 
 namespace activation {
@@ -21,14 +22,13 @@ namespace activation {
   }
 
 
-  template <std::floating_point num> void min_max( auto& logits ){
-      
-    num min = *std::min_element(logits.cbegin(), logits.cend());
-    num rcp = static_cast<num>(1) / ((*std::max_element(logits.cbegin(), logits.cend()) - min) + static_cast<num>(1e-4));
-    
-    std::transform( std::execution::seq,
-      logits.cbegin(), logits.cend(), logits.begin(), [&](const auto& x) { return (x.send() - min) * rcp; }
-    );
+  template <std::floating_point num> void abs_max( auto& logits ){
+
+    num abs_max = std::numeric_limits<float>::lowest();
+
+    for(auto& x : logits) { abs_max = std::max(std::abs(x.send()), abs_max); }
+    for(auto& x : logits) { x.send() /= abs_max; x.mul_error(abs_max); }
+
   }
 
 }
