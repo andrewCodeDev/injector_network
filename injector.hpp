@@ -45,7 +45,7 @@ namespace injector {
     void calibrate( const container_a& inp, const container_b& trg ){
 
       for( std::size_t i{0}; i < logits.size(); ++i ){
-        logits[i].add_dx( logits[i].send() - trg[i] );
+        logits[i].add_error( logits[i].send() - trg[i] );
       }
 
       for( logit_ref l_pos : logits ){

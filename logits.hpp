@@ -165,14 +165,16 @@ namespace logit {
     immediate() = default;
     immediate( const std::size_t& num_s ){ sensors.resize(num_s); };
 
-    immediate( std::size_t num_s, std::size_t s_size ){
+    immediate( std::size_t num_s, std::size_t s_size ){ initialize(num_s, s_size); };
+
+    void initialize( std::size_t num_s, std::size_t s_size ){
       sensors.reserve(num_s); 
       weights.reserve(num_s); 
       while( 0 < num_s-- ){ 
         sensors.emplace_back(s_size);
         weights.emplace_back(rand_gen<num>());
-      };
-    };
+      }
+    }
   
     immediate& operator=(const immediate& other) = default;
     immediate& operator=(const num& x){ stimuli = x; return *this; }

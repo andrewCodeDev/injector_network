@@ -1,5 +1,5 @@
 #include "conflux.hpp"
-#include "samples.h"
+#include "samples.hpp"
 
 /*
 
@@ -18,15 +18,31 @@
 // }
 
 
+using namespace set2x2::and_gate;
+
 
 
 int main(void){
 
-  injector::shallow<float, 2, logit::imd> b_1(3);
+  injector::shallow<float, 2, logit::imd> b_1(2, 3);
 
-  // for(int epoch = 0; epoch < 10'000; ++epoch){
+  for(int epoch = 0; epoch < 10'000; ++epoch){
 
-  // }
+    for(int i = 0; i < 4; ++i){
+
+      b_1.forward(inp[i]);
+
+      b_1.calibrate(inp[i], trg[i]);
+
+
+    }
+
+  }
+
+  b_1.forward(inp[0]); b_1.display_output();
+  b_1.forward(inp[1]); b_1.display_output();
+  b_1.forward(inp[2]); b_1.display_output();
+  b_1.forward(inp[3]); b_1.display_output();
 
   
 
