@@ -162,6 +162,10 @@ namespace logit {
     std::vector<sensor<num>> sensors;
 
   public:
+
+    using sns_ref  = sensor<num>&;
+    using csns_ref = const sensor<num>&;
+
     immediate() = default;
     immediate( const std::size_t& num_s ){ sensors.resize(num_s); };
 
@@ -181,8 +185,8 @@ namespace logit {
     
     num send() const { return stimuli; }
 
-    const sensor<num>& operator[](const std::size_t& i ) const { return sensors[i]; }
-          sensor<num>& operator[](const std::size_t& i )       { return sensors[i]; }
+    csns_ref operator[](const std::size_t& i ) const { return sensors[i]; }
+     sns_ref operator[](const std::size_t& i )       { return sensors[i]; }
 
     num operator()(){
       stimuli = std::inner_product(sensors.cbegin(), sensors.cend(), weights.cbegin(), static_cast<num>(0));

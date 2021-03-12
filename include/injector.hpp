@@ -18,7 +18,8 @@ namespace injector {
 
   public:
 
-    using logit_ref = logit::immediate<num>&;
+    using logit_ref  =       logit::immediate<num>&;
+    using clogit_ref = const logit::immediate<num>&;
 
     shallow( const std::size_t& inp_size, const std::size_t& n_terms ){
       for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
@@ -26,8 +27,8 @@ namespace injector {
 
     std::size_t size() const { return logits.size(); }
 
-    const logit_ref operator[]( const std::size_t& i ) const { return logits[i]; }
-          logit_ref operator[]( const std::size_t& i )       { return logits[i]; }
+    clogit_ref operator[]( const std::size_t& i ) const { return logits[i]; }
+    logit_ref  operator[]( const std::size_t& i )       { return logits[i]; }
 
     template<class container>
     void forward( const container& inp ){
@@ -211,10 +212,10 @@ namespace injector {
         l_pair.first.zero_error();
         l_pair.second.zero_error(); 
 
-        l_pair.first.add_dx(l_pair.first.send() - v_trg[0]);
+        l_pair.first.add_error(l_pair.first.send() - v_trg[0]);
         l_pair.first.calibrate(0, inp[0]);
 
-        l_pair.second.add_dx(l_pair.second.send() - v_trg[1]);
+        l_pair.second.add_error(l_pair.second.send() - v_trg[1]);
         l_pair.second.calibrate(0, inp[1]);
 
     }

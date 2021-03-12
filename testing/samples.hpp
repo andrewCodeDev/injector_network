@@ -17,25 +17,6 @@ namespace set2x1 {
     static const std::vector<std::vector<float>> trg{{1},    {1},    {1},    {0}};
   }
 
-  // namespace or_gate {
-  //   static const std::vector<std::vector<float>> inp{{0, 0}, {1, 0}, {0, 1}, {1, 1}};
-  //   static const std::vector<std::vector<float>> trg{{0, 1}, {1, 0}, {1, 0}, {1, 0}};
-  // }
-
-  // namespace nor_gate {
-  //   static const std::vector<std::vector<float>> inp{{0, 0}, {1, 0}, {0, 1}, {1, 1}};
-  //   static const std::vector<std::vector<float>> trg{{1, 0}, {0, 1}, {0, 1}, {0, 1}};
-  // }
-
-  // namespace p_nq_and {
-  //   static const std::vector<std::vector<float>> inp{{0, 1}, {1, 0}, {0, 1}, {1, 1}};
-  //   static const std::vector<std::vector<float>> trg{{0, 1}, {1, 0}, {0, 1}, {0, 1}};
-  // }
-
-  namespace xor_gate {
-    static const std::vector<std::vector<float>> inp{{0, 0}, {1, 0}, {0, 1}, {1, 1}};
-    static const std::vector<std::vector<float>> trg{{0},    {1},    {1},    {0}};
-  }
 };
 
 namespace set2x2 {
@@ -47,7 +28,7 @@ namespace set2x2 {
 
   namespace nand_gate {
     static const std::vector<std::vector<float>> inp{{0, 0}, {1, 0}, {0, 1}, {1, 1}};
-    static const std::vector<std::vector<float>> trg{{1, 0}, {1, 0}, {1, 0}, {0, 0}};
+    static const std::vector<std::vector<float>> trg{{1, 0}, {1, 0}, {1, 0}, {0, 1}};
   }
 
   namespace or_gate {
@@ -61,7 +42,7 @@ namespace set2x2 {
   }
 
   namespace p_nq_and {
-    static const std::vector<std::vector<float>> inp{{0, 1}, {1, 0}, {0, 1}, {1, 1}};
+    static const std::vector<std::vector<float>> inp{{0, 0}, {1, 0}, {0, 1}, {1, 1}};
     static const std::vector<std::vector<float>> trg{{0, 1}, {1, 0}, {0, 1}, {0, 1}};
   }
 

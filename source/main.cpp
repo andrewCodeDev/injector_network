@@ -1,6 +1,5 @@
-#include "conflux.hpp"
-#include "samples.hpp"
-
+#include "../include/conflux.hpp"
+#include "../testing/samples.hpp"
 /*
 
   total number of paths where at all rows have at least one active logit:
@@ -18,15 +17,16 @@
 // }
 
 
-using namespace set2x2::and_gate;
+using namespace set2x2::nand_gate;
 
 
 
 int main(void){
 
   injector::shallow<float, 2, logit::imd> b_1(2, 3);
+  // injector::binary<float> b_1(3);
 
-  for(int epoch = 0; epoch < 10'000; ++epoch){
+  for(int epoch = 0; epoch < 2'500; ++epoch){
 
     for(int i = 0; i < 4; ++i){
 
