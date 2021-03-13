@@ -12,7 +12,7 @@ int main(void){
   std::vector<std::vector<float>> vec1 { {1, 0, 0, 0}, {0, 1, 0, 0 } };
   std::vector<std::vector<float>> vec2 { {0, 0, 0, 1} };
 
-  // o_h.encode("have a nice da", 'y');
+  // // o_h.encode("have a nice da", 'y');
 
   injector::shallow<float, 4, logit::seq> b_1(4, 3);
   // injector::binary<float> b_1(3);j
