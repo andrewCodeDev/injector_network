@@ -3,7 +3,7 @@
 
 
 template<class network> bool binary_eval(const network& n) {
-  return (n[0].send() > n[1].send()) ? true : false;
+  return (n[0]() > n[1]()) ? true : false;
 }
 
 
