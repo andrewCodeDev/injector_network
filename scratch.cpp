@@ -5,15 +5,13 @@
 
 int main(void){
 
-  std::vector<float> test1{ 14, 16, -2, 7, -21, 8, 9 };
-  std::vector<float> test2{ -14, -16, -2, -7, -21, -8, -9 };
-
-  activation::min_max<float>(test1);
-  activation::min_max<float>(test2);
+  std::string str{"abcdefg"};
 
 
-  for(auto& x : test1) { std::cout << x << ' '; } std::cout << '\n';
-  for(auto& x : test2) { std::cout << x << ' '; } std::cout << '\n';
+  std::string test(str.c_str(), 4);
+
+  std::cout << str.size() << ' ' << str.length() << '\n';
+  std::cout << test << ' ' << str.back() << '\n';
 
 
   return 0;

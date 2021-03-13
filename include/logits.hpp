@@ -66,32 +66,32 @@ namespace sensor {
       
       num dy_dx( const num& x, std::size_t n_drv = 1 ){
 
-      assert( 0 < n_drv && n_drv < 3 );
+        assert( 0 < n_drv && n_drv < 3 );
 
-      if( n_drv == 1 ) {
+        if( n_drv == 1 ) {
 
-        return std::transform_reduce(data.cbegin(), data.cend(), (num)0, std::plus<num>{},
-          [&x](const modifier& m) 
-          { 
-            num e_p = std::exp(m.rate * (x - m.center));
-            return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
-          });
-      }
-      
-      if( n_drv == 2 ) {
+          return std::transform_reduce(data.cbegin(), data.cend(), (num)0, std::plus<num>{},
+            [&x](const modifier& m) 
+            { 
+              num e_p = std::exp(m.rate * (x - m.center));
+              return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
+            });
+        }
+        
+        if( n_drv == 2 ) {
 
-        return std::transform_reduce(data.cbegin(), data.cend(), (num)0, std::plus<num>{}, 
-          [&x](const modifier& m)
-          { 
-            num e_p = std::exp(m.rate * (x - m.center));
-            return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
-          });
+          return std::transform_reduce(data.cbegin(), data.cend(), (num)0, std::plus<num>{}, 
+            [&x](const modifier& m)
+            { 
+              num e_p = std::exp(m.rate * (x - m.center));
+              return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
+            });
+          }
+
+          return 0.0f; // otherwise it complains
         }
 
-        return 0.0f; // otherwise it complains
-      }
-
-      void calibrate( const num& x, const num& error, num scale = 1.0, num lr = 0.01 ){
+      void calibrate( const num& x, const num& error, num lr = 0.01 ){
 
         num one{1}, adj{error * lr}, e_p, denom;
 
@@ -101,9 +101,9 @@ namespace sensor {
           e_p = std::exp(m.rate * (x - m.center)); 
           denom = (one + e_p) * (one + e_p);
 
-          m.rate   -= scale * ((-m.coef * (x - m.center) * e_p ) / denom ) * adj;
-          m.center -= scale * (( m.coef * m.rate * e_p ) / denom ) * adj;
-          m.coef   -= scale * (one / (one + e_p)) * adj;
+          m.rate   -=  ((-m.coef * (x - m.center) * e_p ) / denom ) * adj;
+          m.center -=  (( m.coef * m.rate * e_p ) / denom ) * adj;
+          m.coef   -=  (one / (one + e_p)) * adj;
         }
       }
 
@@ -301,18 +301,15 @@ namespace logit {
     immediate& operator=(const immediate& other) = default;
     immediate& operator=(const num& x){ stimuli = x; return *this; }
     
-    num send() const { return stimuli; }
 
     csns_ref operator[](const std::size_t& i ) const { return sensors[i]; }
-    sns_ref operator[](const std::size_t& i )       { return sensors[i]; }
+     sns_ref operator[](const std::size_t& i )       { return sensors[i]; }
 
-    num operator()(){
-      stimuli = std::inner_product(sensors.cbegin(), sensors.cend(), weights.cbegin(), static_cast<num>(0));
-      return stimuli;
-    }
 
-    num receive( const std::size_t& i, const num& x ){ return sensors[i](x); }
+    void operator()(const std::size_t& i, const num& x ){ stimuli += weights[i] * sensors[i](x); }
 
+    num operator()() const { return stimuli; }
+ 
     void add_sensor( std::size_t new_s, const std::size_t& n_terms ){
       while( 0 < new_s-- ){
         sensors.emplace_back(sns_type(n_terms));
@@ -328,9 +325,9 @@ namespace logit {
 
     template<class functor> void transform(const functor& f ){ stimuli = f(stimuli); }
 
-    void calibrate( const std::size_t& i, const num& x, num scale = 1 ){
+    void calibrate( const std::size_t& i, const num& x ){
       
-      sensors[i].calibrate(x, error * weights[i], scale); 
+      sensors[i].calibrate(x, error * weights[i]); 
       weights[i] -= error * sensors[i].signal * (num)0.01;
       
     }
@@ -340,7 +337,6 @@ namespace logit {
     void add_error( const num& dx ){ error += dx; }
     void mul_error( const num& dx ){ error *= dx; }
     num  get_error(){ return error; }
-    void zero_error() { error = (num)0; }
     void show_error() { std::cout << "error: " << error << '\n'; }
 
     auto begin() const { return sensors.begin(); }
@@ -355,6 +351,8 @@ namespace logit {
     auto rbegin() { return sensors.rbegin(); }
     auto rend()   { return sensors.rend();   }
 
+    void reset() { stimuli = 0; error = 1; }
+
     std::size_t size() const { return sensors.size(); }
 
     friend bool operator==( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli == rhs.stimuli; }
@@ -365,7 +363,7 @@ namespace logit {
     friend bool operator> ( const immediate& lhs, const immediate& rhs ){ return lhs.stimuli >  rhs.stimuli; }
 
   private:
-    num stimuli{0}, error{0};
+    num stimuli{0}, error{1};
     std::vector<num> weights;
     std::vector<sensor::IMDsensor<num>> sensors;
   };
@@ -388,8 +386,8 @@ namespace logit {
 
     public:
       using sns_type = sensor::SEQsensor<num>;
-      using  sns_ref = sns_type&;
-      using csns_ref = const sns_ref&;
+      using  sns_ref = sensor::SEQsensor<num>&;
+      using csns_ref = const sensor::SEQsensor<num>&;
 
       sequential() = default;
       sequential( const std::size_t& num_s ){ sensors.resize(num_s); };
@@ -407,18 +405,12 @@ namespace logit {
     
       sequential& operator=(const sequential& other) = default;
       sequential& operator=(const num& x){ stimuli = x; return *this; }
-      
-      num send() const { return stimuli; }
 
+       sns_ref operator[](const std::size_t& i )       { return sensors[i]; }
       csns_ref operator[](const std::size_t& i ) const { return sensors[i]; }
-      sns_ref  operator[](const std::size_t& i )       { return sensors[i]; }
 
-      num operator()(){
-        stimuli += std::inner_product(sensors.cbegin(), sensors.cend(), weights.cbegin(), static_cast<num>(0));
-        return stimuli;
-      }
-
-      num receive( const std::size_t& i, const num& x ){ return sensors[i](x); }
+      num  operator()() const { return stimuli; }
+      void operator()( const std::size_t& i, const num& x ){ stimuli += weights[i] * sensors[i](x); }
 
       void add_sensor( std::size_t new_s, const std::size_t& n_terms ){
         while( 0 < new_s-- ){
