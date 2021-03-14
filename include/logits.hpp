@@ -115,15 +115,13 @@ namespace sensor {
           });
         return signal;
       }
-
+      
       const modifier& operator[](const std::size_t& i ) const { return data[i]; }
             modifier& operator[](const std::size_t& i )       { return data[i]; }
 
       IMDsensor& operator++(){ data.emplace_back( modifier{} ); return *this; }
       IMDsensor& operator--(){ data.pop_back(); return *this; }
       
-      // using friend function for commutative property
-
       auto begin() const { return data.begin(); }
       auto begin()       { return data.begin(); }
       auto end()   const { return data.end(); }
@@ -137,15 +135,9 @@ namespace sensor {
 
       std::size_t size() const { return data.size(); }
 
-      friend num operator+( const num& x, const IMDsensor& s ) { return x + s.signal; }
-      friend num operator-( const num& x, const IMDsensor& s ) { return x - s.signal; }
-      friend num operator*( const num& x, const IMDsensor& s ) { return x * s.signal; }
-      friend num operator/( const num& x, const IMDsensor& s ) { return x / s.signal; }
+      // implicit conversions ~~~~~~~~~~~~~~~~~~~~~~~~
 
-      friend num operator+( const IMDsensor& s, const num& x ) { return s.signal + x; }
-      friend num operator-( const IMDsensor& s, const num& x ) { return s.signal - x; }
-      friend num operator*( const IMDsensor& s, const num& x ) { return s.signal * x; }
-      friend num operator/( const IMDsensor& s, const num& x ) { return s.signal / x; }
+      operator num() const { return signal; }
 
   };
 
@@ -175,30 +167,30 @@ namespace sensor {
       
       num dy_dx( const num& x, std::size_t n_drv = 1 ){
 
-      assert( 0 < n_drv && n_drv < 3 );
+        assert( 0 < n_drv && n_drv < 3 );
 
-      if( n_drv == 1 ) {
+        if( n_drv == 1 ) {
 
-        return std::transform_reduce(data.cbegin(), data.cend(), (num)0, std::plus<num>{},
-          [&x](const modifier& m) 
-          { 
-            num e_p = std::exp(m.rate * (x - m.cntr));
-            return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
-          });
-      }
-      
-      if( n_drv == 2 ) {
-
-        return std::transform_reduce(data.cbegin(), data.cend(), (num)0, std::plus<num>{}, 
-          [&x](const modifier& m)
-          { 
-            num e_p = std::exp(m.rate * (x - m.cntr));
-            return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
-          });
+          return std::transform_reduce(data.cbegin(), data.cend(), (num)0, std::plus<num>{},
+            [&x](const modifier& m) 
+            { 
+              num e_p = std::exp(m.rate * (x - m.cntr));
+              return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
+            });
         }
+        
+        if( n_drv == 2 ) {
 
-        return 0.0f; // otherwise it complains
-      }
+          return std::transform_reduce(data.cbegin(), data.cend(), (num)0, std::plus<num>{}, 
+            [&x](const modifier& m)
+            { 
+              num e_p = std::exp(m.rate * (x - m.cntr));
+              return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
+            });
+          }
+
+          return 0.0f; // otherwise it complains
+        }
 
       void calibrate(const num& error, num lr = 0.01 ){
         for( modifier& m : data ) {
@@ -253,16 +245,9 @@ namespace sensor {
 
       std::size_t size() const { return data.size(); }
 
-      // using friend function for commutative property
-      friend num operator+( const num& x, const SEQsensor& s ) { return x + s.signal; }
-      friend num operator-( const num& x, const SEQsensor& s ) { return x - s.signal; }
-      friend num operator*( const num& x, const SEQsensor& s ) { return x * s.signal; }
-      friend num operator/( const num& x, const SEQsensor& s ) { return x / s.signal; }
-
-      friend num operator+( const SEQsensor& s, const num& x ) { return s.signal + x; }
-      friend num operator-( const SEQsensor& s, const num& x ) { return s.signal - x; }
-      friend num operator*( const SEQsensor& s, const num& x ) { return s.signal * x; }
-      friend num operator/( const SEQsensor& s, const num& x ) { return s.signal / x; }
+      // implicit conversions ~~~~~~~~~~~~~~~~~~~~~~~~
+      
+      operator num() const { return signal; }
 
   };
 
@@ -367,17 +352,6 @@ namespace logit {
     std::vector<num> weights;
     std::vector<sensor::IMDsensor<num>> sensors;
   };
-
-
-
-
-
-
-
-
-
-
-
 
 
   template < 

@@ -1,17 +1,33 @@
 #include <bits/stdc++.h>
-#include "include/activation.hpp"
+
+
+#include <compare>
+
+
+template <std::floating_point num> struct implicit{
+
+    num x{1};
+
+    operator num() const { return x; }
+
+    bool operator<=> (const implicit& other) { return x <=> other.x; }
+};
+
 
 
 
 int main(void){
 
-  std::string str{"abcdefg"};
+  std::cout << std::boolalpha;
+
+  implicit<float> a{1}, b{2}, c{3};
 
 
-  std::string test(str.c_str(), 4);
+  std::cout << 3.0f * b << '\n';
+  std::cout << c / b << '\n';
 
-  std::cout << str.size() << ' ' << str.length() << '\n';
-  std::cout << test << ' ' << str.back() << '\n';
+  
+  
 
 
   return 0;
