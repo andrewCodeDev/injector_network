@@ -9,8 +9,6 @@ template <std::floating_point num> struct implicit{
     num x{1};
 
     operator num() const { return x; }
-
-    bool operator<=> (const implicit& other) { return x <=> other.x; }
 };
 
 

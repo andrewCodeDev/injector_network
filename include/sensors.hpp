@@ -87,67 +87,67 @@ namespace sensor {
   > class IMDsensor : public sensor_base<num, IMDmodifier<num>>{
 
     public:
-    IMDsensor() = default;
-    IMDsensor(const size_t& size){
+      IMDsensor() = default;
+      IMDsensor(const size_t& size){
 
-      this->data.resize(size);
+        this->data.resize(size);
 
-      for( auto& m : this->data ){
-        m.coef = rand_gen<num>();
-        m.rate = rand_gen<num>();
-        m.cntr = rand_gen<num>();
-      }
-    };
-    
-    num dy_dx( const num& x, std::size_t n_drv = 1 ){
-
-      assert( 0 < n_drv && n_drv < 3 );
-
-      if( n_drv == 1 ) {
-
-        return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
-          [&x](const auto& m) 
-          { 
-            num e_p = std::exp(m.rate * (x - m.cntr));
-            return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
-          });
-      }
+        for( auto& m : this->data ){
+          m.coef = rand_gen<num>();
+          m.rate = rand_gen<num>();
+          m.cntr = rand_gen<num>();
+        }
+      };
       
-      if( n_drv == 2 ) {
+      num dy_dx( const num& x, std::size_t n_drv = 1 ){
 
-        return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{}, 
-          [&x](const auto& m)
-          { 
-            num e_p = std::exp(m.rate * (x - m.cntr));
-            return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
-          });
+        assert( 0 < n_drv && n_drv < 3 );
+
+        if( n_drv == 1 ) {
+
+          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
+            [&x](const auto& m) 
+            { 
+              num e_p = std::exp(m.rate * (x - m.cntr));
+              return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
+            });
+        }
+        
+        if( n_drv == 2 ) {
+
+          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{}, 
+            [&x](const auto& m)
+            { 
+              num e_p = std::exp(m.rate * (x - m.cntr));
+              return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
+            });
+          }
+
+          return 0.0f; // otherwise it complains
         }
 
-        return 0.0f; // otherwise it complains
+      void calibrate( const num& x, const num& error, num lr = 0.01 ){
+
+        num one{1}, adj{error * lr}, e_p, denom;
+          
+        for( auto& m : this->data ) {
+          e_p = std::exp(m.rate * (x - m.cntr)); 
+          denom = (one + e_p) * (one + e_p);
+
+          m.rate   -=  ((-m.coef * (x - m.cntr) * e_p ) / denom ) * adj;
+          m.cntr -=  (( m.coef * m.rate * e_p ) / denom ) * adj;
+          m.coef   -=  (one / (one + e_p)) * adj;
+        }
       }
 
-    void calibrate( const num& x, const num& error, num lr = 0.01 ){
-
-      num one{1}, adj{error * lr}, e_p, denom;
-        
-      for( auto& m : this->data ) {
-        e_p = std::exp(m.rate * (x - m.cntr)); 
-        denom = (one + e_p) * (one + e_p);
-
-        m.rate   -=  ((-m.coef * (x - m.cntr) * e_p ) / denom ) * adj;
-        m.cntr -=  (( m.coef * m.rate * e_p ) / denom ) * adj;
-        m.coef   -=  (one / (one + e_p)) * adj;
+      num operator()( const num& x ){
+        this->signal = std::transform_reduce(std::execution::seq, this->data.cbegin(), this->data.cend(), static_cast<num>(0), std::plus<num>{},
+          [&x](const auto& m)
+          {
+            return m.coef / (static_cast<num>(1) + std::exp(m.rate * (x - m.cntr)));
+          });
+        return this->signal;
       }
-    }
-
-    num operator()( const num& x ){
-      this->signal = std::transform_reduce(std::execution::seq, this->data.cbegin(), this->data.cend(), static_cast<num>(0), std::plus<num>{},
-        [&x](const auto& m)
-        {
-          return m.coef / (static_cast<num>(1) + std::exp(m.rate * (x - m.cntr)));
-        });
-      return this->signal;
-    }
 
   };
 
@@ -156,76 +156,76 @@ namespace sensor {
   > class SEQsensor : public sensor_base<num, SEQmodifier<num>>{
     
     public:
-    SEQsensor() = default;
-    SEQsensor(const size_t& size){
-      this->data.resize(size);
-      for( auto& m : this->data ){
-        m.coef = rand_gen<num>();
-        m.rate = rand_gen<num>();
-        m.cntr = rand_gen<num>();
-      }
-    };
-    
-    num dy_dx( const num& x, std::size_t n_drv = 1 ){
-
-      assert( 0 < n_drv && n_drv < 3 );
-
-      if( n_drv == 1 ) {
-
-        return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
-          [&x](const auto& m) 
-          { 
-            num e_p = std::exp(m.rate * (x - m.cntr));
-            return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
-          });
-      }
+      SEQsensor() = default;
+      SEQsensor(const size_t& size){
+        this->data.resize(size);
+        for( auto& m : this->data ){
+          m.coef = rand_gen<num>();
+          m.rate = rand_gen<num>();
+          m.cntr = rand_gen<num>();
+        }
+      };
       
-      if( n_drv == 2 ) {
+      num dy_dx( const num& x, std::size_t n_drv = 1 ){
 
-        return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{}, 
-          [&x](const auto& m)
-          { 
-            num e_p = std::exp(m.rate * (x - m.cntr));
-            return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
-          });
+        assert( 0 < n_drv && n_drv < 3 );
+
+        if( n_drv == 1 ) {
+
+          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
+            [&x](const auto& m) 
+            { 
+              num e_p = std::exp(m.rate * (x - m.cntr));
+              return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
+            });
+        }
+        
+        if( n_drv == 2 ) {
+
+          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{}, 
+            [&x](const auto& m)
+            { 
+              num e_p = std::exp(m.rate * (x - m.cntr));
+              return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
+            });
+          }
+
+          return 0.0f; // otherwise it complains
         }
 
-        return 0.0f; // otherwise it complains
+      void calibrate(const num& error, num lr = 0.01 ){
+        for( auto& m : this->data ) {
+          m.rate -= m.rate_upd * error * lr;
+          m.cntr -= m.cntr_upd * error * lr;
+          m.coef -= m.coef_upd * error * lr;
+
+          m.rate_upd = 0;
+          m.cntr_upd = 0;
+          m.coef_upd = 0;
+        }
       }
 
-    void calibrate(const num& error, num lr = 0.01 ){
-      for( auto& m : this->data ) {
-        m.rate -= m.rate_upd * error * lr;
-        m.cntr -= m.cntr_upd * error * lr;
-        m.coef -= m.coef_upd * error * lr;
+      num operator()( const num& x ){
 
-        m.rate_upd = 0;
-        m.cntr_upd = 0;
-        m.coef_upd = 0;
+        this->signal = std::transform_reduce(std::execution::seq, this->data.cbegin(), this->data.cend(), static_cast<num>(0), std::plus<num>{},
+          [&x](const auto& m)
+          {
+            return m.coef / (static_cast<num>(1) + std::exp(m.rate * (x - m.cntr)));
+          });
+
+        num one{1}, e_p, denom;
+
+        for( auto& m : this->data ) {
+          e_p = std::exp(m.rate * (x - m.cntr)); 
+          denom = (one + e_p) * (one + e_p);
+
+          m.rate_upd += ((-m.coef * (x - m.cntr) * e_p ) / denom );
+          m.cntr_upd += (( m.coef * m.rate * e_p ) / denom );
+          m.coef_upd += (one / (one + e_p));
+        }
+
+        return this->signal;
       }
-    }
-
-    num operator()( const num& x ){
-
-      this->signal = std::transform_reduce(std::execution::seq, this->data.cbegin(), this->data.cend(), static_cast<num>(0), std::plus<num>{},
-        [&x](const auto& m)
-        {
-          return m.coef / (static_cast<num>(1) + std::exp(m.rate * (x - m.cntr)));
-        });
-
-      num one{1}, e_p, denom;
-
-      for( auto& m : this->data ) {
-        e_p = std::exp(m.rate * (x - m.cntr)); 
-        denom = (one + e_p) * (one + e_p);
-
-        m.rate_upd += ((-m.coef * (x - m.cntr) * e_p ) / denom );
-        m.cntr_upd += (( m.coef * m.rate * e_p ) / denom );
-        m.coef_upd += (one / (one + e_p));
-      }
-
-      return this->signal;
-    }
 
   };
 
