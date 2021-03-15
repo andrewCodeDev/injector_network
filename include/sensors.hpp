@@ -282,9 +282,9 @@ namespace sensor {
           return 0.0f; // otherwise it complains
         }
 
-      void calibrate(const num& error, num lr = 0.01 ){
+      void calibrate(const num& error, num lr = 0.00001 ){
 
-        // num scale = scale_max_abs_upd();
+        num scale = scale_max_abs_upd();
 
         for( auto& m : this->data ) {
           m.rate -= m.rate_upd * error * lr;
@@ -324,19 +324,7 @@ namespace sensor {
         return this->signal;
       }
 
-      num f(const num& x, const num& coef, const num& rate, const num& cntr)
-      {
-        return coef / (static_cast<num>(1) + std::exp(rate * (x - cntr)));
-      }
-
-      num g(const num& x, const num& coef, const num& rate, const num& cntr)
-      {
-        num e_p = std::exp(rate * (x - cntr));
-        return -(coef * rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
-      }
-
     private:
-
       num find_max_abs_upd() const {
 
         num maxm = 1;
@@ -360,6 +348,17 @@ namespace sensor {
         return std::pow(static_cast<num>(10), -(floor(log10(ceil(find_max_abs_upd()))) + static_cast<num>(1)));
 
       }
+
+      num f(const num& x, const num& coef, const num& rate, const num& cntr)
+      {
+        return coef / (static_cast<num>(1) + std::exp(rate * (x - cntr)));
+      }
+
+      num g(const num& x, const num& coef, const num& rate, const num& cntr)
+      {
+        num e_p = std::exp(rate * (x - cntr));
+        return -(coef * rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
+      } 
   };
 
 
