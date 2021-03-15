@@ -1,0 +1,2 @@
+
+Experiment with using full logistic derivitive vs partials for x modifier in dynamic logits - requires more data

@@ -1,32 +1,28 @@
 #include <bits/stdc++.h>
 
 
-#include <compare>
-
-
-template <std::floating_point num> struct implicit{
-
-    num x{1};
-
-    operator num() const { return x; }
-};
-
-
-
 
 int main(void){
 
   std::cout << std::boolalpha;
 
-  implicit<float> a{1}, b{2}, c{3};
+
+  running_deriv t;
+
+  std::vector<float> vec2{1, 0, 1};
 
 
-  std::cout << 3.0f * b << '\n';
-  std::cout << c / b << '\n';
+
 
   
-  
 
+  for( std::size_t i{0}; i < vec2.size(); ++i ){
+    std::cout << t.forward(vec2[i]) << '\n';
+    std::cout << t.d_theta << '\n';
+  } std::cout << '\n';
+
+
+  // std::cout << (t.f(t.theta + 1e-4f, 1.0f + t.fp(t.theta + 1e-4f, 0.0f + t.fp(t.theta + 1e-4f, 1.0f))) - t.f(t.theta, 1.0f + t.fp(t.theta, 0.0f + t.fp(t.theta, 1.0f)))) / 1e-4f;
 
   return 0;
 }

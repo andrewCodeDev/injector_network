@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>
 #include <vector>
+// #include <ranges>
 
 #include "activation.hpp"
 
@@ -33,6 +34,7 @@ template <
 
 namespace logit {
 
+template <std::floating_point num> class dynamic;
 template <std::floating_point num> class immediate;
 template <std::floating_point num> class sequential;
 
@@ -44,6 +46,13 @@ namespace sensor {
 
   template<std::floating_point num> struct IMDmodifier { num coef{1}, rate{1}, cntr{0}; };
   template<std::floating_point num> struct SEQmodifier { num coef{1}, rate{1}, cntr{0}, coef_upd{0}, rate_upd{0}, cntr_upd{0}; };
+  
+  template<std::floating_point num> struct DYNmodifier {
+    num coef{1},     rate{1},     cntr{0},
+        coef_upd{0}, rate_upd{0}, cntr_upd{0},
+        coef_dyn{0}, rate_dyn{0}, cntr_dyn{0},
+        dx_mem{0};
+    };
 
 
   // sensor base class ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,6 +83,7 @@ namespace sensor {
       num signal{0};
       std::vector<modifier> data;
 
+      friend class logit::dynamic<num>;
       friend class logit::immediate<num>;
       friend class logit::sequential<num>;
   };
@@ -227,6 +237,100 @@ namespace sensor {
         return this->signal;
       }
 
+  };
+
+
+  template <
+    std::floating_point num
+  > class DYNsensor : public sensor_base<num, DYNmodifier<num>>{
+    
+    public:
+      DYNsensor() = default;
+      DYNsensor(const size_t& size){
+        this->data.resize(size);
+        for( auto& m : this->data ){
+          m.coef = rand_gen<num>();
+          m.rate = rand_gen<num>();
+          m.cntr = rand_gen<num>();
+        }
+      };
+      
+      num dy_dx( const num& x, std::size_t n_drv = 1 ){
+
+        assert( 0 < n_drv && n_drv < 3 );
+
+        if( n_drv == 1 ) {
+
+          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
+            [&x](const auto& m) 
+            { 
+              num e_p = std::exp(m.rate * (x - m.cntr));
+              return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
+            });
+        }
+        
+        if( n_drv == 2 ) {
+
+          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{}, 
+            [&x](const auto& m)
+            { 
+              num e_p = std::exp(m.rate * (x - m.cntr));
+              return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
+            });
+          }
+
+          return 0.0f; // otherwise it complains
+        }
+
+      void calibrate(const num& error, num lr = 0.01 ){
+        for( auto& m : this->data ) {
+          m.rate -= m.rate_upd * error * lr;
+          m.cntr -= m.cntr_upd * error * lr;
+          m.coef -= m.coef_upd * error * lr;
+
+          m.rate_upd = 0;
+          m.cntr_upd = 0;
+          m.coef_upd = 0;
+
+          m.rate_dyn = 0;
+          m.cntr_dyn = 0;
+          m.coef_dyn = 0;
+
+          m.dx_mem   = 0;
+        }
+      }
+
+      num operator()( const num& x ){
+        for( auto& m : this->data ){
+
+          num tmp = f(x + m.dx_mem, m.coef, m.rate, m.cntr);
+
+          m.coef_upd += (f(x + m.coef_dyn, m.coef + (num)1e-4, m.rate, m.cntr) - tmp) / (num)1e-4;
+          m.rate_upd += (f(x + m.rate_dyn, m.coef, m.rate + (num)1e-4, m.cntr) - tmp) / (num)1e-4;
+          m.cntr_upd += (f(x + m.cntr_dyn, m.coef, m.rate, m.cntr + (num)1e-4) - tmp) / (num)1e-4;
+
+          m.dx_mem = g(x + m.dx_mem, m.coef, m.rate, m.cntr);
+
+          m.coef_dyn = g(x + m.dx_mem, m.coef + (num)1e-4, m.rate, m.cntr);
+          m.rate_dyn = g(x + m.dx_mem, m.coef, m.rate + (num)1e-4, m.cntr);
+          m.cntr_dyn = g(x + m.dx_mem, m.coef, m.rate, m.cntr + (num)1e-4);
+
+          this->signal += tmp;
+        }
+        return this->signal;
+      }
+
+    private:
+      num f(const num& x, const num& coef, const num& rate, const num& cntr)
+      {
+        return coef / (static_cast<num>(1) + std::exp(rate * (x - cntr)));
+      }
+
+      num g(const num& x, const num& coef, const num& rate, const num& cntr)
+      {
+        num e_p = std::exp(rate * (x - cntr));
+        return -(coef * rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
+      }
   };
 
 }

@@ -69,7 +69,6 @@ namespace injector {
 
   };
 
-
   template <
     std::floating_point num,
     std::size_t         out_size
@@ -83,6 +82,66 @@ namespace injector {
 
     using clogit_ref = const logit::sequential<num>&;
     using  logit_ref =       logit::sequential<num>&;
+
+    shallow( const std::size_t& inp_size, const std::size_t& n_terms ){
+      for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
+    };
+
+    std::size_t size() const { return logits.size(); }
+
+    clogit_ref operator[]( const std::size_t& i ) const { return logits[i]; }
+     logit_ref operator[]( const std::size_t& i )       { return logits[i]; }
+
+    template<class container>
+    void forward( const container& inp ){
+
+      for( logit_ref l_pos : logits )
+      for( std::size_t i{0}; i < inp.size(); ++i ){
+        l_pos(i, inp[i]); 
+      }
+
+      activation::min_max<num>(logits);
+      activation::softmax<num>(logits);
+    }
+
+    template<class container>
+    void calibrate( const container& trg ){
+
+      for( std::size_t i{0}; i < logits.size(); ++i ){
+        logits[i].mul_error(logits[i]() - trg[i]);
+        logits[i].calibrate();
+      }
+    }
+
+    void display_output(){
+      for( clogit_ref l_pos : logits ){
+        std::cout << l_pos() << ' ';
+      } std::cout << '\n';
+    }
+
+    void display_formulas(){
+      for( clogit_ref l_pos : logits ){
+      for( std::size_t i{0}; i < logits.size(); ++i ){
+        standard_form(l_pos[i]);
+      } std::cout << '\n';
+      } std::cout << '\n';
+    }
+
+  };
+
+  template <
+    std::floating_point num,
+    std::size_t         out_size
+  > class shallow< num, out_size, logit::dyn >{
+
+  private:
+
+    std::array<logit::dynamic<num>, out_size> logits;
+
+  public:
+
+    using clogit_ref = const logit::dynamic<num>&;
+    using  logit_ref =       logit::dynamic<num>&;
 
     shallow( const std::size_t& inp_size, const std::size_t& n_terms ){
       for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }

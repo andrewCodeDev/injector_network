@@ -8,6 +8,7 @@ namespace logit {
 
   struct imd { };
   struct seq { };
+  struct dyn { };
 
 
   // logit base ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -115,6 +116,33 @@ namespace logit {
 
       sequential& operator=( const sequential& other ) = default;
       sequential& operator=( const num& x ){ this->stimuli = x; return *this; }
+
+      void calibrate( num lr = 0.01 ){
+        
+        for( std::size_t i{0}; i < this->sensors.size(); ++i ){
+          this->sensors[i].calibrate(this->error * this->weights[i], lr); 
+          this->weights[i] -= this->error * this->sensors[i].signal * lr;
+        }
+        this->reset();
+      }
+
+      num dy_dx( const std::size_t& i, const num& x ){ return this->weights[i] * this->sensors[i].dy_dx(x) * this->error; }; 
+
+  };
+
+  template < 
+    std::floating_point num
+  > class dynamic : public logit_base<num, sensor::DYNsensor<num>>{
+
+    public:
+      dynamic() = default;
+      dynamic( std::size_t num_s, std::size_t s_size ){ this->initialize(num_s, s_size); };
+
+      num  operator()() const { return this->stimuli; }
+      void operator()(  const std::size_t& i, const num& x ){ this->stimuli += this->weights[i] * this->sensors[i](x); }
+
+      dynamic& operator=( const dynamic& other ) = default;
+      dynamic& operator=( const num& x ){ this->stimuli = x; return *this; }
 
       void calibrate( num lr = 0.01 ){
         
