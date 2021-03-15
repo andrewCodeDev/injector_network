@@ -14,16 +14,16 @@ int main(void){
 
   // // o_h.encode("have a nice da", 'y');
 
-  injector::shallow<float, 4, logit::seq> b_1(4, 3);
+  injector::shallow<float, 4, logit::dyn> b_1(4, 3);
   // injector::binary<float> b_1(3);j
 
-  for(int epoch = 0; epoch < 1000; ++epoch){
+  for(int epoch = 0; epoch < 20; ++epoch){
 
     for(int i = 0; i < 2; ++i){
 
       b_1.forward(vec1[i]);
 
-      if(epoch % 10 == 0) { b_1.display_output(); }
+      if(epoch % 2 == 0) { b_1.display_output(); }
     }
       b_1.calibrate(vec1[0]);
   }
