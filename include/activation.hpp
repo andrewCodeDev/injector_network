@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <execution>
 #include <concepts>
+#include <iostream>
 #include <numeric>
 #include <limits>
 #include <cmath>
@@ -24,11 +25,11 @@ namespace activation {
 
   template <std::floating_point num> void min_max( auto& logits ){
 
-    num min_stm = (*std::max_element(logits.cbegin(), logits.cend()))();
-    num max_stm = (*std::min_element(logits.cbegin(), logits.cend()))();
+    num min_stm = (*std::min_element(logits.cbegin(), logits.cend()))();
+    num max_stm = (*std::max_element(logits.cbegin(), logits.cend()))();
     num rcp     = static_cast<num>(1) / (max_stm - min_stm);
 
-    for(auto& l_pos : logits) { l_pos = (l_pos() - min_stm) / rcp; l_pos.mul_error(rcp); }
+    for(auto& l_pos : logits) { l_pos = (l_pos() - min_stm) * rcp; l_pos.mul_error(rcp); }
   }
 
 }

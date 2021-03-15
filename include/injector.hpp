@@ -95,9 +95,10 @@ namespace injector {
     template<class container>
     void forward( const container& inp ){
 
-      for( logit_ref l_pos : logits )
-      for( std::size_t i{0}; i < inp.size(); ++i ){
-        l_pos(i, inp[i]); 
+      for( auto& r_inp : inp    )
+      for( auto& l_pos : logits )
+      for( std::size_t i{0}; i < r_inp.size(); ++i ){
+        l_pos(i, r_inp[i]); 
       }
 
       activation::min_max<num>(logits);
@@ -154,19 +155,18 @@ namespace injector {
 
     template<class container>
     void forward( const container& inp ){
-
-      for( logit_ref l_pos : logits )
-      for( std::size_t i{0}; i < inp.size(); ++i ){
-        l_pos(i, inp[i]); 
+      
+      for( auto& r_inp : inp    )
+      for( auto& l_pos : logits )
+      for( std::size_t i{0}; i < r_inp.size(); ++i ){
+        l_pos(i, r_inp[i]); 
       }
-
       activation::min_max<num>(logits);
       activation::softmax<num>(logits);
     }
 
     template<class container>
     void calibrate( const container& trg ){
-
       for( std::size_t i{0}; i < logits.size(); ++i ){
         logits[i].mul_error(logits[i]() - trg[i]);
         logits[i].calibrate();

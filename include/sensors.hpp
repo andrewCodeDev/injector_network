@@ -22,9 +22,9 @@ template <
 
   for(std::size_t i{0}; i < poly_num.size(); ++i) {
     if( i == (poly_num.size() - 1)) {
-      std::cout << poly_num[i].coef << "/(1 + e^(" << poly_num[i].rate << "(x - " << poly_num[i].center << ")))";
+      std::cout << poly_num[i].coef << "/(1 + e^(" << poly_num[i].rate << "(x - " << poly_num[i].cntr << ")))";
     } else {
-      std::cout << poly_num[i].coef << "/(1 + e^(" << poly_num[i].rate << "(x - " << poly_num[i].center << "))) + ";
+      std::cout << poly_num[i].coef << "/(1 + e^(" << poly_num[i].rate << "(x - " << poly_num[i].cntr << "))) + ";
     }
   } std::cout << '\n';
 }
@@ -283,6 +283,9 @@ namespace sensor {
         }
 
       void calibrate(const num& error, num lr = 0.01 ){
+
+        // num scale = scale_max_abs_upd();
+
         for( auto& m : this->data ) {
           m.rate -= m.rate_upd * error * lr;
           m.cntr -= m.cntr_upd * error * lr;
@@ -305,22 +308,22 @@ namespace sensor {
 
           num tmp = f(x + m.dx_mem, m.coef, m.rate, m.cntr);
 
-          m.coef_upd += (f(x + m.coef_dyn, m.coef + (num)1e-4, m.rate, m.cntr) - tmp) / (num)1e-4;
-          m.rate_upd += (f(x + m.rate_dyn, m.coef, m.rate + (num)1e-4, m.cntr) - tmp) / (num)1e-4;
-          m.cntr_upd += (f(x + m.cntr_dyn, m.coef, m.rate, m.cntr + (num)1e-4) - tmp) / (num)1e-4;
+          m.coef_upd += (f(x + m.coef_dyn, m.coef + (num)1e-3, m.rate, m.cntr) - tmp) / (num)1e-3;
+          m.rate_upd += (f(x + m.rate_dyn, m.coef, m.rate + (num)1e-3, m.cntr) - tmp) / (num)1e-3;
+          m.cntr_upd += (f(x + m.cntr_dyn, m.coef, m.rate, m.cntr + (num)1e-3) - tmp) / (num)1e-3;
 
           m.dx_mem = g(x + m.dx_mem, m.coef, m.rate, m.cntr);
 
-          m.coef_dyn = g(x + m.dx_mem, m.coef + (num)1e-4, m.rate, m.cntr);
-          m.rate_dyn = g(x + m.dx_mem, m.coef, m.rate + (num)1e-4, m.cntr);
-          m.cntr_dyn = g(x + m.dx_mem, m.coef, m.rate, m.cntr + (num)1e-4);
+          m.coef_dyn = g(x + m.dx_mem, m.coef + (num)1e-3, m.rate, m.cntr);
+          m.rate_dyn = g(x + m.dx_mem, m.coef, m.rate + (num)1e-3, m.cntr);
+          m.cntr_dyn = g(x + m.dx_mem, m.coef, m.rate, m.cntr + (num)1e-3);
+
 
           this->signal += tmp;
         }
         return this->signal;
       }
 
-    private:
       num f(const num& x, const num& coef, const num& rate, const num& cntr)
       {
         return coef / (static_cast<num>(1) + std::exp(rate * (x - cntr)));
@@ -331,7 +334,35 @@ namespace sensor {
         num e_p = std::exp(rate * (x - cntr));
         return -(coef * rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
       }
+
+    private:
+
+      num find_max_abs_upd() const {
+
+        num maxm = 1;
+
+        // std::cout << "maximum value:" << maxm << '\n';
+
+        for( auto& m : this->data ){
+          maxm = std::max(maxm, std::abs(m.coef_upd));
+          maxm = std::max(maxm, std::abs(m.rate_upd));
+          maxm = std::max(maxm, std::abs(m.cntr_upd));
+        }
+
+        return maxm;
+
+      }
+
+      num scale_max_abs_upd() const {
+
+        using namespace std;
+
+        return std::pow(static_cast<num>(10), -(floor(log10(ceil(find_max_abs_upd()))) + static_cast<num>(1)));
+
+      }
   };
+
+
 
 }
 

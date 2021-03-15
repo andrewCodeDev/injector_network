@@ -1,5 +1,8 @@
+  // for(int epoch = 0; epoch < 6; ++epoch){
 
-  b_1.forward(inp[0]); b_1.display_output();
-  b_1.forward(inp[1]); b_1.display_output();
-  b_1.forward(inp[2]); b_1.display_output();
-  b_1.forward(inp[3]); b_1.display_output();
+  //   b_1.forward(vec1);
+
+  //   if(epoch % 2 == 0) { b_1.display_output(); }
+
+  //   b_1.calibrate(vec2[0]);
+  // }
