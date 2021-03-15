@@ -11,18 +11,20 @@ int main(void){
   std::vector<std::vector<float>> vec2 { {0, 0, 1, 0} };
 
 
+  // injector::bilayer<float, 4, logit::dyn, logit::seq> b_1(4, 3);
   injector::shallow<float, 4, logit::seq> b_1(4, 3);
 
-  b_1.display_formulas();
   
-  for(int epoch = 0; epoch < 109'000; ++epoch){
+  for(int epoch = 0; epoch < 10'000; ++epoch){
 
-    b_1.forward(vec1);
+
+      b_1.forward(vec1);
+      if(epoch % 10 == 0) { b_1.display_output(); }
+      b_1.calibrate(vec2[0]);
+    
 
     // b_1.display_output();
-    if(epoch % 10'000 == 0) { b_1.display_output(); }
 
-    b_1.calibrate(vec2[0]);
   }
 
   std::cout << '\n';

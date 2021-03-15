@@ -6,6 +6,8 @@
 namespace injector {
 
   template<std::floating_point num, std::size_t out_size, class logit_t> class shallow;
+  
+  template<std::floating_point num, std::size_t out_size, typename logit_a, typename logit_b> class bilayer;
 
   template <
     std::floating_point num,
@@ -100,8 +102,7 @@ namespace injector {
       for( std::size_t i{0}; i < r_inp.size(); ++i ){
         l_pos(i, r_inp[i]); 
 
-      activation::min_max<num>(logits);
-      }
+      // activation::abs_max<num>(logits);
       activation::softmax<num>(logits);
     }
 
@@ -161,7 +162,7 @@ namespace injector {
       for( std::size_t i{0}; i < r_inp.size(); ++i ){
         l_pos(i, r_inp[i]); 
       }
-      activation::min_max<num>(logits);
+      // activation::min_max<num>(logits);
       activation::softmax<num>(logits);
     }
 
@@ -188,6 +189,95 @@ namespace injector {
     }
 
   };
+
+
+// bilayer ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  template <
+    std::floating_point num,
+    std::size_t         out_size
+  > class bilayer< num, out_size, logit::dyn, logit::seq >{
+
+    private:
+
+      std::array<logit::dynamic<num>,    out_size> logits_a;
+      std::array<logit::sequential<num>, out_size> logits_b;
+
+    public:
+
+      bilayer( const std::size_t& inp_size, const std::size_t& n_terms ){
+        for( auto& l_pos : logits_a ) { l_pos.initialize(inp_size,        n_terms); }
+        for( auto& l_pos : logits_b ) { l_pos.initialize(logits_a.size(), n_terms); }
+      };
+
+      std::size_t size() const { return out_size; }
+
+      template<class container>
+      void forward( const container& inp ){
+        
+      for( auto& r_inp : inp ){
+
+        for( auto& l_pos : logits_a )
+        for( std::size_t i{0}; i < r_inp.size(); ++i ){
+          l_pos(i, r_inp[i]); 
+        }
+
+
+        for( auto& l_pos : logits_b )
+        for( std::size_t i{0}; i < out_size; ++i ){
+          l_pos(i, logits_a[i]());
+
+          logits_a[i].add_error(l_pos.dy_dx(i, logits_a[i]()));
+        }
+      }
+        for(auto& x : logits_a) { std::cout << x() << ' '; } std::cout << '\n';
+        for(auto& x : logits_b) { std::cout << x() << ' '; } std::cout << "\n\n";
+        activation::min_max<num>(logits_b);
+        activation::softmax<num>(logits_b);
+        for(auto& x : logits_b) { std::cout << x() << ' '; } std::cout << "\n\n";
+      }
+
+      template<class container>
+      void calibrate( const container& trg ){
+
+        for(auto& x : logits_a) { std::cout << x.get_error() << ' '; } std::cout << '\n';
+        for(auto& x : logits_b) { std::cout << x.get_error() << ' '; } std::cout << "\n\n";
+
+        for( std::size_t i{0}; i < out_size; ++i ){
+
+          logits_b[i].mul_error(logits_b[i]() - trg[i]);
+          logits_a[i].mul_error(logits_b[i].get_error());
+          
+          logits_a[i].calibrate();
+          logits_b[i].calibrate();
+        }
+      }
+
+      void display_output() const {
+        for( const auto& l_pos : logits_b ){
+          std::cout << l_pos() << ' ';
+        } std::cout << '\n';
+      }
+
+      void display_formulas() const {
+        for( const auto& l_pos : logits_a ){
+        for( std::size_t i{0}; i < logits_a.size(); ++i ){
+          standard_form(l_pos[i]);
+        } std::cout << '\n';
+        } std::cout << '\n';
+
+        for( const auto& l_pos : logits_b ){
+        for( std::size_t i{0}; i < logits_b.size(); ++i ){
+          standard_form(l_pos[i]);
+        } std::cout << '\n';
+        } std::cout << '\n';
+      }
+
+  };
+
+
+
 
   template <
     std::floating_point num
