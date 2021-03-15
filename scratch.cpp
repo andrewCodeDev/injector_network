@@ -7,6 +7,23 @@ void print_test(std::string str, const float& x)
   std::cout << str << ": " <<  x << '\n';
 }
 
+  template <std::floating_point num> void abs_max( auto& logits ){
+
+    num maxm = 0;
+
+    for( auto& l_pos : logits ){ maxm = std::max(maxm, std::abs(l_pos())); }
+
+    if(maxm < (num)1){ return; }
+
+    else {
+      maxm = pow(static_cast<num>(10), -floor(log10(floor(maxm * static_cast<num>(10)))));
+    
+      for( auto& l_pos : logits ){ l_pos = l_pos() * maxm;}
+    }
+
+  }
+
+
 int main(void){
 
   std::cout << std::boolalpha;
@@ -72,9 +89,17 @@ int main(void){
   // print_test("output", ds.f(x, ds[0].coef, ds[0].rate, ds[0].cntr));
 
 
-  std::array<float, 5> arr{0};
+  std::vector<float> vec1{ 0.9, 0.2, -0.5, -0.7 };
+  std::vector<float> vec2{ 1.9, 0.2, -3.5, -0.7 };
+  std::vector<float> vec3{ 12.9, 49.2, -3.5, -0.7 };
 
-  for(auto& x : arr){ std::cout << x << ' '; } std::cout << '\n';
+  abs_max<float>(vec1);
+  abs_max<float>(vec2);
+  abs_max<float>(vec3);
+
+  for(auto& x : vec1) { std::cout << x << ' '; } std::cout << '\n';
+  for(auto& x : vec2) { std::cout << x << ' '; } std::cout << '\n';
+  for(auto& x : vec3) { std::cout << x << ' '; } std::cout << '\n';
 
 
   return 0;

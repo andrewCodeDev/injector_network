@@ -15,15 +15,16 @@ int main(void){
   injector::shallow<float, 4, logit::seq> b_1(4, 3);
 
   
-  for(int epoch = 0; epoch < 100'000; ++epoch){
+  for(int epoch = 0; epoch < 10'000; ++epoch){
 
-    b_1.forward(vec1);
+
+      b_1.forward(vec1);
+      if(epoch % 10 == 0) { b_1.display_output(); }
+      b_1.calibrate(vec2[0]);
+    
 
     // b_1.display_output();
-    if(epoch % 10'000 == 0) { b_1.display_output(); }
 
-  // b_1.display_formulas();
-    b_1.calibrate(vec2[0]);
   }
 
   std::cout << '\n';
