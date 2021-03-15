@@ -31,22 +31,6 @@ namespace activation {
 
     for(auto& l_pos : logits) { l_pos = (l_pos() - min_stm) * rcp; l_pos.mul_error(rcp); }
   }
- 
-  template <std::floating_point num> void abs_max( auto& logits ){
-
-    num maxm = 0;
-
-    for( auto& l_pos : logits ){ maxm = std::max(maxm, std::abs(l_pos())); }
-
-    if(maxm < (num)1){ return; }
-
-    else {
-      maxm = pow(static_cast<num>(10), -floor(log10(floor(maxm * static_cast<num>(10)))));
-    
-      for( auto& l_pos : logits ){ l_pos = l_pos() * maxm; l_pos.mul_error(maxm);}
-    }
-
-  }
 
 }
 
