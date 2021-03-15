@@ -11,7 +11,7 @@ int main(void){
   std::vector<std::vector<float>> vec2 { {0, 0, 1, 0} };
 
 
-  injector::shallow<float, 4, logit::dyn> b_1(4, 3);
+  injector::shallow<float, 4, logit::seq> b_1(4, 3);
 
   b_1.display_formulas();
   
