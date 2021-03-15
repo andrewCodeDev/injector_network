@@ -104,6 +104,7 @@ namespace injector {
 
       // activation::abs_max<num>(logits);
       activation::softmax<num>(logits);
+      }
     }
 
     template<class container>
