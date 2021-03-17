@@ -163,7 +163,9 @@ namespace injector {
       for( std::size_t i{0}; i < r_inp.size(); ++i ){
         l_pos(i, r_inp[i]); 
       }
-      // activation::min_max<num>(logits);
+
+      // display_output();
+      activation::min_max<num>(logits);
       activation::softmax<num>(logits);
     }
 

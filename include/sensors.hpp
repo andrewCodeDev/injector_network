@@ -148,6 +148,7 @@ namespace sensor {
           m.cntr -=  (( m.coef * m.rate * e_p ) / denom ) * adj;
           m.coef -=  (one / (one + e_p)) * adj;
         }
+        this->signal = 0;
       }
 
       num operator()( const num& x ){
@@ -213,6 +214,7 @@ namespace sensor {
           m.cntr_upd = 0;
           m.coef_upd = 0;
         }
+        this->signal = 0;
       }
 
       num operator()( const num& x ){
@@ -299,6 +301,7 @@ namespace sensor {
 
           m.dx_mem   = 0;
         }
+        this->signal = 0;
       }
 
       num operator()( const num& x ){

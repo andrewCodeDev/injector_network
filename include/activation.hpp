@@ -11,15 +11,28 @@
 
 namespace activation {
 
+  // template<std::floating_point num> void softmax( auto& logits ){
+
+  //   num denominator = std::transform_reduce( std::execution::seq, 
+  //     logits.cbegin(), logits.cend(), static_cast<num>(0), std::plus<num>{}, [](const auto& l_pos) { return std::exp(l_pos()); }
+  //   );
+    
+  //   std::transform( std::execution::seq,
+  //     logits.cbegin(), logits.cend(), logits.begin(), [&denominator](const auto& l_pos){ return std::exp(l_pos()) / denominator; }
+  //   );
+  // }
+
+
   template<std::floating_point num> void softmax( auto& logits ){
 
     num denominator = std::transform_reduce( std::execution::seq, 
       logits.cbegin(), logits.cend(), static_cast<num>(0), std::plus<num>{}, [](const auto& l_pos) { return std::exp(l_pos()); }
     );
     
-    std::transform( std::execution::seq,
-      logits.cbegin(), logits.cend(), logits.begin(), [&denominator](const auto& l_pos){ return std::exp(l_pos()) / denominator; }
-    );
+    for( auto & l_pos : logits ){ 
+      l_pos = std::exp(l_pos()) / denominator;
+      // l_pos.mul_error( l_pos() * ((num)1 - l_pos()) );  
+    }
   }
 
 
