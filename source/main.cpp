@@ -8,22 +8,18 @@ using namespace set2x2::and_gate;
 int main(void){
 
   std::vector<std::vector<float>> vec1 { {1, 0, 0, 0}, {0, 1, 0, 0 } };
-  std::vector<std::vector<float>> vec2 { {0, 0, 1, 0} };
+  std::vector<std::vector<float>> vec2 { {1, 0, 0, 0} };
 
 
   // injector::bilayer<float, 4, logit::dyn, logit::seq> b_1(4, 3);
   injector::shallow<float, 4, logit::seq> b_1(4, 3);
 
   
-  for(int epoch = 0; epoch < 10'000; ++epoch){
+  for(int epoch = 0; epoch < 1000; ++epoch){
 
-
-      b_1.forward(vec1);
-      if(epoch % 10 == 0) { b_1.display_output(); }
-      b_1.calibrate(vec2[0]);
-    
-
-    // b_1.display_output();
+    b_1.forward(vec1);
+    if( epoch % 10 == 0 ){ b_1.display_output(); }
+    b_1.calibrate(vec2[0]);
 
   }
 
