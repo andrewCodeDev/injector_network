@@ -8,7 +8,7 @@ void print_test(std::string str, const float& x)
 }
 
   template<std::floating_point num> struct SCRmodifier {
-    num coef{1},     cntr{0},
+    num coef{0.5},     cntr{0.5},
         coef_upd{0}, cntr_upd{0},
         coef_dyn{0}, cntr_dyn{0},
         dx_mem{0};
@@ -16,11 +16,11 @@ void print_test(std::string str, const float& x)
 
   template <
     std::floating_point num
-  > class SCRsensor : public sensor_base<num, SCRmodifier<num>>{
+  > class SCRsensor : public sensor::sensor_base<num, SCRmodifier<num>>{
     
     public:
-      DYNsensor() = default;
-      DYNsensor(const size_t& size){
+      SCRsensor() = default;
+      SCRsensor(const size_t& size){
         this->data.resize(size);
         for( auto& m : this->data ){
           m.coef = 0.5;
@@ -47,15 +47,24 @@ void print_test(std::string str, const float& x)
       num operator()( const num& x ){
         for( auto& m : this->data ){
 
-          num tmp = f(x + m.dx_mem, m.coef, m.rate, m.cntr);
+          num tmp = f(x + m.dx_mem, m.coef, m.cntr);
 
-          m.coef_upd += (f(x + m.coef_dyn, m.coef + (num)1e-3, m.rate, m.cntr) - tmp) / (num)1e-3;
-          m.cntr_upd += (f(x + m.cntr_dyn, m.coef, m.rate, m.cntr + (num)1e-3) - tmp) / (num)1e-3;
+          print_test("tmp", tmp);
 
-          m.dx_mem = g(x + m.dx_mem, m.coef, m.rate, m.cntr);
+          // print_test("cntr + h", f(x + m.coef_dyn, m.coef + (num)1e-3, m.cntr));
+          print_test("cntr dyn", m.cntr_dyn);
 
-          m.coef_dyn = g(x + m.dx_mem, m.coef + (num)1e-3, m.rate, m.cntr);
-          m.cntr_dyn = g(x + m.dx_mem, m.coef, m.rate, m.cntr + (num)1e-3);
+          // print_test("dx_mem", m.dx_mem);
+
+          print_test("cntr", (f(x + m.cntr_dyn, m.coef, m.cntr + (num)1e-3) - tmp) / (num)1e-3);
+
+          m.coef_upd += (f(x + m.coef_dyn, m.coef + (num)1e-3, m.cntr) - tmp) / (num)1e-3;
+          m.cntr_upd += (f(x + m.cntr_dyn, m.coef, m.cntr + (num)1e-3) - tmp) / (num)1e-3;
+
+          m.dx_mem = g(x + m.dx_mem, m.coef, m.cntr);
+
+          m.coef_dyn = g(x + m.coef_dyn, m.coef + (num)1e-3, m.cntr);
+          m.cntr_dyn = g(x + m.cntr_dyn, m.coef, m.cntr + (num)1e-3);
 
 
           this->signal += tmp;
@@ -71,7 +80,12 @@ int main(void){
 
   std::cout << std::boolalpha;
 
-  // sensor::DYNsensor<float> ds(3);
+  SCRsensor<float> ds(1);
+
+  ds(1.0f);
+  ds(1.0f);
+  ds(1.0f);
+
 
 
   std::cout << '\n';
@@ -80,20 +94,6 @@ int main(void){
 // //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //   std::cout << '\n'; //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
 // //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-  std::vector<float> vec1{ 0.9, 0.2, -0.5, -0.7 };
-  std::vector<float> vec2{ 1.9, 0.2, -3.5, -0.7 };
-  std::vector<float> vec3{ 12.9, 49.2, -3.5, -0.7 };
-
-  min_max_scratch<float>(vec1);
-  min_max_scratch<float>(vec2);
-  min_max_scratch<float>(vec3);
-
-  for(auto& x : vec1) { std::cout << x << ' '; } std::cout << '\n';
-  for(auto& x : vec2) { std::cout << x << ' '; } std::cout << '\n';
-  for(auto& x : vec3) { std::cout << x << ' '; } std::cout << '\n';
 
 
   return 0;

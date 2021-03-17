@@ -165,7 +165,8 @@ namespace injector {
       }
 
       // display_output();
-      activation::min_max<num>(logits);
+      // activation::min_max<num>(logits);
+      // activation::abs_max<num>(logits);
       activation::softmax<num>(logits);
     }
 
@@ -220,38 +221,36 @@ namespace injector {
       void forward( const container& inp ){
         
       for( auto& r_inp : inp ){
-
         for( auto& l_pos : logits_a )
         for( std::size_t i{0}; i < r_inp.size(); ++i ){
           l_pos(i, r_inp[i]); 
         }
 
-
         for( auto& l_pos : logits_b )
-        for( std::size_t i{0}; i < out_size; ++i ){
+        for( std::size_t i{0}; i < logits_a.size(); ++i ){
           l_pos(i, logits_a[i]());
-
-          logits_a[i].add_error(l_pos.dy_dx(i, logits_a[i]()));
         }
       }
-        for(auto& x : logits_a) { std::cout << x() << ' '; } std::cout << '\n';
-        for(auto& x : logits_b) { std::cout << x() << ' '; } std::cout << "\n\n";
-        activation::min_max<num>(logits_b);
         activation::softmax<num>(logits_b);
-        for(auto& x : logits_b) { std::cout << x() << ' '; } std::cout << "\n\n";
       }
 
       template<class container>
       void calibrate( const container& trg ){
 
-        for(auto& x : logits_a) { std::cout << x.get_error() << ' '; } std::cout << '\n';
-        for(auto& x : logits_b) { std::cout << x.get_error() << ' '; } std::cout << "\n\n";
+        for( std::size_t i{0}; i < logits_b.size(); ++i ){
+          logits_b[i].mul_error(logits_b[i]() - trg[i]);
+        }
+
+        num tmp{0};
+        
+        for( std::size_t i{0}; i < logits_a.size(); ++i ){
+        for( std::size_t j{0}; j < logits_b.size(); ++j ){
+          tmp += logits_b[j].dy_dx(i, logits_a[i]());
+        }
+          logits_a[i].mul_error(tmp); tmp = 0;
+        }
 
         for( std::size_t i{0}; i < out_size; ++i ){
-
-          logits_b[i].mul_error(logits_b[i]() - trg[i]);
-          logits_a[i].mul_error(logits_b[i].get_error());
-          
           logits_a[i].calibrate();
           logits_b[i].calibrate();
         }

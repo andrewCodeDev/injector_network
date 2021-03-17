@@ -285,7 +285,6 @@ namespace sensor {
         }
 
       void calibrate(const num& error, num lr = 0.01 ){
-
         for( auto& m : this->data ) {
           m.rate -= m.rate_upd * error * lr;
           m.cntr -= m.cntr_upd * error * lr;
@@ -315,16 +314,16 @@ namespace sensor {
 
           m.dx_mem = g(x + m.dx_mem, m.coef, m.rate, m.cntr);
 
-          m.coef_dyn = g(x + m.dx_mem, m.coef + (num)1e-3, m.rate, m.cntr);
-          m.rate_dyn = g(x + m.dx_mem, m.coef, m.rate + (num)1e-3, m.cntr);
-          m.cntr_dyn = g(x + m.dx_mem, m.coef, m.rate, m.cntr + (num)1e-3);
-
+          m.coef_dyn = g(x + m.coef_dyn, m.coef + (num)1e-3, m.rate, m.cntr);
+          m.rate_dyn = g(x + m.rate_dyn, m.coef, m.rate + (num)1e-3, m.cntr);
+          m.cntr_dyn = g(x + m.cntr_dyn, m.coef, m.rate, m.cntr + (num)1e-3);
 
           this->signal += tmp;
         }
         return this->signal;
       }
 
+    private:
       num f(const num& x, const num& coef, const num& rate, const num& cntr)
       {
         return coef / (static_cast<num>(1) + std::exp(rate * (x - cntr)));
