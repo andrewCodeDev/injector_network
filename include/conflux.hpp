@@ -1,5 +1,5 @@
 #include "activation.hpp"
 #include "logits.hpp"
 #include "injector.hpp"
-#include "char_encoder.hpp"
+#include "encodings.hpp"
 #include "file_splicer.hpp"

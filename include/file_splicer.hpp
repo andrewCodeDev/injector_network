@@ -7,7 +7,7 @@
 #include <vector>
 #include <iostream>
 
-#include "char_encoder.hpp"
+#include "encodings.hpp"
 
 namespace splicer {
 

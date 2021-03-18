@@ -205,14 +205,15 @@ namespace injector {
 
     private:
 
-      std::array<logit::dynamic<num>,    out_size> logits_a;
-      std::array<logit::sequential<num>, out_size> logits_b;
 
     public:
 
+      std::array<logit::dynamic<num>,    out_size> logits_a;
+      std::array<logit::sequential<num>, out_size> logits_b;
+
       bilayer( const std::size_t& inp_size, const std::size_t& n_terms ){
-        for( auto& l_pos : logits_a ) { l_pos.initialize(inp_size,        n_terms); }
-        for( auto& l_pos : logits_b ) { l_pos.initialize(logits_a.size(), n_terms); }
+        for( auto& l_pos : logits_a ) { l_pos.initialize(inp_size, n_terms); }
+        for( auto& l_pos : logits_b ) { l_pos.initialize(inp_size, n_terms); }
       };
 
       std::size_t size() const { return out_size; }
@@ -220,10 +221,11 @@ namespace injector {
       template<class container>
       void forward( const container& inp ){
         
-      for( auto& r_inp : inp ){
+      for( std::size_t r{0}; r < inp.current_size(); ++r ){
+        
         for( auto& l_pos : logits_a )
-        for( std::size_t i{0}; i < r_inp.size(); ++i ){
-          l_pos(i, r_inp[i]); 
+        for( std::size_t i{0}; i < inp[r].size(); ++i ){
+          l_pos(i, inp[r][i]); 
         }
 
         for( auto& l_pos : logits_b )
@@ -231,7 +233,7 @@ namespace injector {
           l_pos(i, logits_a[i]());
         }
       }
-        activation::softmax<num>(logits_b);
+        // activation::softmax<num>(logits_b);
       }
 
       template<class container>
