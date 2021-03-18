@@ -102,7 +102,6 @@ namespace logit {
       num dy_dx( const std::size_t& i, const num& x ){ return this->weights[i] * this->sensors[i].dy_dx(x) * this->error; }
   };
 
-
   template < 
     std::floating_point num
   > class sequential : public logit_base<num, sensor::SEQsensor<num>>{
