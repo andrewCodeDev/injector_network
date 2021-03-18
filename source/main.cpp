@@ -4,8 +4,7 @@
 int main(void){
 
   std::vector<std::vector<float>> inp{{1, 0, 0, 0}, {0, 1, 0, 0}};
-  std::vector<std::vector<float>> trg{{1, 0, 0, 1}};
-
+  std::vector<std::vector<float>> trg{{0, 0, 0, 1}};
 
   // encoder::one_hot<float, 29, encoder::fndm> o_h;
  
@@ -14,12 +13,19 @@ int main(void){
   // o_h.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/atlas_spl.txt");
 
   // injector::bilayer<float, o_h.out_size(), logit::dyn, logit::seq> inj_net(o_h.out_size(), 3);
+  
+  injector::shallow<float, 4, logit::dyn> inj_net(4, 3);
+  
+  for( std::size_t epoch{0}; epoch < 10'000; ++epoch ){
 
+    inj_net.forward(inp);
 
-  // std::cout << o_h.current_size() << '\n';
-  // std::cout << o_h.out_size() << '\n';
+    if( epoch % 1'000 == 0 ){ inj_net.display_output(); }
 
-  // std::cout << o_h[0].size();
+    inj_net.calibrate(trg[0]);
+
+  }
+
   
   // for( std::size_t epoch{0}; epoch < 1; ++epoch ){
 

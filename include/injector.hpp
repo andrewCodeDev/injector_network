@@ -165,7 +165,7 @@ namespace injector {
       }
 
       // display_output();
-      // activation::min_max<num>(logits);
+      activation::min_max<num>(logits);
       // activation::abs_max<num>(logits);
       activation::softmax<num>(logits);
     }
