@@ -38,7 +38,7 @@ namespace injector {
       for( std::size_t i{0}; i < logits.size(); ++i ){
         l_pos(i, inp[i]); 
       }
-      activation::softmax<num>(logits);
+      activation::softmax_diff<num>(logits);
     }
 
     template<class container_a, class container_b>
@@ -89,10 +89,17 @@ namespace injector {
       for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
     };
 
+    std::array<logit::sequential<num>, out_size>& output() const { return logits; }
+    std::array<logit::sequential<num>, out_size>& output()       { return logits; }
+
     std::size_t size() const { return logits.size(); }
 
     clogit_ref operator[]( const std::size_t& i ) const { return logits[i]; }
      logit_ref operator[]( const std::size_t& i )       { return logits[i]; }
+
+    void reset_logits(){
+      for( auto& l_pos : logits ){ l_pos.full_reset(); }
+    }
 
     template<class container>
     void forward( const container& inp ){
@@ -108,9 +115,9 @@ namespace injector {
 
     template<class container>
     void calibrate( const container& trg ){
-
       for( std::size_t i{0}; i < logits.size(); ++i ){
-        logits[i].mul_error(logits[i]() - trg[i]);
+        logits[i].mul_error(( -trg[i] / logits[i]() ) / (num)trg.size() );
+        // logits[i].mul_error( logits[i]() - trg[i] );
         logits[i].calibrate();
       }
     }
@@ -149,10 +156,17 @@ namespace injector {
       for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
     };
 
+    std::array<logit::dynamic<num>, out_size>& output() const { return logits; }
+    std::array<logit::dynamic<num>, out_size>& output()       { return logits; }
+
     std::size_t size() const { return logits.size(); }
 
     clogit_ref operator[]( const std::size_t& i ) const { return logits[i]; }
      logit_ref operator[]( const std::size_t& i )       { return logits[i]; }
+
+    void reset_logits(){
+      for( auto& l_pos : logits ){ l_pos.full_reset(); }
+    }
 
     template<class container>
     void forward( const container& inp ){
@@ -160,16 +174,20 @@ namespace injector {
       for( auto& r_inp : inp    )
       for( auto& l_pos : logits )
       for( std::size_t i{0}; i < r_inp.size(); ++i ){
+        
+        // std::cout << r_inp[i] << ' ';
         l_pos(i, r_inp[i]); 
       }
-
+      
+      // display_output();
       activation::softmax<num>(logits);
     }
 
     template<class container>
     void calibrate( const container& trg ){
       for( std::size_t i{0}; i < logits.size(); ++i ){
-        logits[i].mul_error(logits[i]() - trg[i]);
+        logits[i].mul_error(( -trg[i] / logits[i]() ) / (num)trg.size() );
+        // logits[i].mul_error( logits[i]() - trg[i] );
         logits[i].calibrate();
       }
     }
@@ -244,9 +262,9 @@ namespace injector {
       void calibrate( const container& trg ){
 
         for( std::size_t i{0}; i < logits_b.size(); ++i ){
-          logits_b[i].mul_error(logits_b[i]() - trg[i]);
+          logits_b[i].mul_error(( -trg[i] / logits_b[i]() ) / (num)trg.size() );
         }
-
+        
         num tmp{0};
         
         for( std::size_t i{0}; i < logits_a.size(); ++i ){

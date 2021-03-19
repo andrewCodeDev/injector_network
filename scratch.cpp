@@ -76,25 +76,40 @@ void print_test(std::string str, const float& x)
       num g( const num& x, const num& coef, const num& cntr ) { return (num)2 * coef * (x - cntr);   } 
   };
 
+
+  void vector_collapse(std::vector<std::vector<float>>& mtx, std::vector<float>& vec){
+
+    using namespace std;
+
+    for(const auto& row : mtx) {
+      std::transform(row.cbegin(), row.cend(), vec.cbegin(), vec.begin(), std::plus<float>{});
+    }
+
+    float negative = -std::accumulate(vec.rbegin(), vec.rend(), 0.0f, [incr = 1.0f](const auto& x, const auto& y) mutable { return (x + y) / incr++; });
+    float positive =  std::accumulate(vec.cbegin(), vec.cend(), 0.0f, [incr = 1.0f](const auto& x, const auto& y) mutable { return (x + y) / incr++; });
+    
+    float encode = (negative + positive) / pow( 10.0f, floor(log10(floor( abs(negative + positive) * 10.0f)))); 
+
+    for(auto& row : mtx) {
+      std::transform(row.begin(), row.end(), row.begin(), [encode](const auto& x){ return x * encode; });
+    }
+  }
+
+
 int main(void){
 
-  std::cout << std::boolalpha;
 
-  SCRsensor<float> ds(1);
+  std::vector<std::vector<float>> mtx{ {1, 0, 0, 0},
+                                       {0, 1, 0, 0},
+                                       {1, 0, 0, 0},
+                                       {1, 0, 0, 1000}};
+  std::vector<float> vec{0, 0, 0, 0};
 
-  ds(1.0f);
-  ds(1.0f);
-  ds(1.0f);
-
-
-
-  std::cout << '\n';
+  std::cout << vector_collapse(mtx, vec);
 
 
-// //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//   std::cout << '\n'; //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-// //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  std::cout << '\n'; //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   return 0;
 }

@@ -1,8 +1,4 @@
-  // for(int epoch = 0; epoch < 6; ++epoch){
+  inj_net.reset_logits();
 
-  //   b_1.forward(vec1);
-
-  //   if(epoch % 2 == 0) { b_1.display_output(); }
-
-  //   b_1.calibrate(vec2[0]);
-  // }
+  inj_net.forward(o_h2);
+  std::cout << o_h1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );

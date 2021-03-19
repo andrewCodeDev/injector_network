@@ -3,26 +3,77 @@
 
 int main(void){
 
-  encoder::one_hot<float, 29, encoder::fndm> o_h;
+  encoder::one_hot<float, 29, encoder::fndm> o_h1;
+  encoder::one_hot<float, 29, encoder::fndm> o_h2;
+  encoder::one_hot<float, 29, encoder::fndm> o_h3;
 
-  o_h.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/atlas_spl.txt");
- 
-  sampler::indexical idx_sampler(o_h.get_trg().size(), 1);
-  
+  o_h1.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
+  o_h2.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
+  o_h3.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
+
+  sampler::indexical idx_sampler(o_h1.get_trg().size(), 5);
 
   // network ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  injector::bilayer<float, o_h.out_size(), logit::dyn, logit::seq> inj_net(o_h.out_size(), 3);
-  // injector::shallow<float, o_h.out_size(), logit::dyn> inj_net(o_h.out_size(), 3);
+  injector::shallow<float, o_h1.out_size(), logit::dyn> inj_net(o_h1.out_size(), 3);
+  // injector::bilayer<float, o_h1.out_size(), logit::dyn, logit::seq> inj_net(o_h1.out_size(), 3);
+
+  o_h1.next_input(); 
+  o_h2.next_input(); o_h2.next_input(); 
+  o_h3.next_input(); o_h3.next_input(); o_h3.next_input();
+
+
+  o_h1.display_trg();
+  o_h2.display_trg();
+
+  
+ 
+  for( std::size_t epoch{0}; epoch < 5'000; ++epoch ){
+
+    inj_net.forward(o_h1);
+    if(epoch % 100 == 0){ inj_net.display_output(); std::cout << '\n'; }
+    inj_net.calibrate(o_h1.get_trg());
+    
+    inj_net.forward(o_h2);
+    inj_net.calibrate(o_h2.get_trg());
+    
+    // inj_net.forward(o_h3);
+    // inj_net.calibrate(o_h3.get_trg());
+
+  }
   
 
-  // test string ~~~~~~~~~~~~~~~~~~~~~~~
-  std::string test_str{"Socialism is "}, out_str{""};
+  inj_net.forward(o_h1);
+  std::cout << o_h1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
 
-  char new_char;
+  inj_net.reset_logits();
+
+  inj_net.forward(o_h2);
+  std::cout << o_h1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
+
+  // inj_net.reset_logits();  
+
+  // inj_net.forward(o_h3);
+  // std::cout << o_h1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
+
+  // o_h1.display_trg();
+  // o_h2.display_trg();
+  // o_h3.display_trg();
+
+  // inj_net.display_formulas();
+  
+ 
+  std::cout << '\n';
+  return 0;
+}
+
+/*
+
 
   for( std::size_t epoch{0}; epoch < 100'000; ++epoch ){
 
     if( epoch % 1'000 == 0 ){ 
+  
+      inj_net.reset_logits();
       
       for( std::size_t i{0}; i < 20; ++i ){
         
@@ -60,11 +111,6 @@ int main(void){
 
   }
 
-  std::cout << '\n';
-  return 0;
-}
-
-/*
 
   // injector::shallow<float, 4, logit::dyn> inj_net(4, 3);
   

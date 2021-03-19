@@ -27,128 +27,6 @@ namespace encoder {
 
   template <std::floating_point num, std::size_t rows, typename vocab_t> class one_hot;
 
-  template <
-    std::floating_point num,
-    std::size_t         rows
-  > class one_hot< num, rows, encoder::lwrc >{
-    
-    const std::size_t cols = case_size + 1;
-    
-    public:
-      using sparse_mtx  = std::array<std::vector<num>, rows>;
-      using sparse_vec  = std::vector<num>;
-
-      one_hot(){
-        vocab[' '] = 0;
-        for(const auto& c : numeric ){ vocab[c] = 0; }
-        for(const auto& c : punctuation ){ vocab[c] = 0; }
-        for(const auto& c : lower_alphabet ){ vocab[c] = 0; }
-
-        std::size_t idx{0};
-
-        for( auto& p : vocab ){ p.second = idx++; }
-
-        for( sparse_vec& vec : encoded_mtx ) { vec.resize(cols); }
-        for( sparse_vec& vec : loading_mtx ) { vec.resize(cols); }
-        target.resize(cols);
-      }
-
-      const sparse_vec& cycle_inp() { 
-        if( current < limit ){
-          return encoded_mtx[current++];
-        }
-
-        else {
-          current = 1; return encoded_mtx[0];
-        }
-      }
-      const sparse_vec& get_trg() const { return target; }
-
-      std::size_t current_size(){ return limit; }
-
-      const std::vector<num>& operator[]( const std::size_t i ) const { return encoded_mtx[i]; }
-            std::vector<num>& operator[]( const std::size_t i )       { return encoded_mtx[i]; }
-
-      void display_inp()   const {
-        std::cout << "| Encoded Matrix |\n\n";
-        for( std::size_t i{0}; i < limit; ++i ){
-          std::cout << '\t';
-        for( std::size_t j{0}; j < cols;  ++j ){
-          std::cout << encoded_mtx[i][j] << ' ';
-        } std::cout << '\n';
-        } std::cout << '\n';
-      }
-
-      void display_trg()   const {
-        std::cout << "| Target Vector |\n\n\t";
-        for( const float& x : target ){
-          std::cout << x << ' ';
-        } std::cout << "\n\n";
-      }
-
-      void display_vocab() const {
-        std::cout << "{ Lowercase Map }\n\n";
-        for( auto& p : vocab ){
-          std::cout << '\t' << p.first << " : " << p.second << '\n';
-        } std::cout << '\n';
-      }
-
-      void encode( const std::string& inp, char trg ){
-
-        std::size_t tmp{ vocab[trg] };
-
-        for( std::size_t i{0}; i < target.size(); ++i ){
-          target[i] = (i == tmp);
-        }
-
-        for( std::size_t i{0}; i < inp.size(); ++i ){
-
-          tmp = vocab[inp[i]];
-
-          for( std::size_t j{0}; j < cols;     ++j ){
-            encoded_mtx[i][j] = (j == tmp);
-          }
-        }
-        current = 0; limit = inp.size();
-      }
-
-      void open_file(const std::string& filepath){
-        
-        ifs.open(filepath);
-
-      }
-
-      bool next_input(){
-
-        if( std::getline(ifs, inp_str) ){
-
-          if( rows < inp_str.length() ) {
-            encode(std::string(inp_str.c_str(), rows), inp_str[rows]);
-          }
-
-          else {
-            encode(std::string(inp_str.c_str(), inp_str.size() - 1), inp_str.back());
-          }
-
-          return true;
-        }
-
-        else {
-          return false;
-        }
-      }
-
-    private:
-      std::ifstream ifs; 
-      std::string inp_str{""};
-
-      encodings   vocab;
-      sparse_mtx  encoded_mtx;
-      sparse_mtx  loading_mtx;
-      sparse_vec  target;
-      std::size_t current{0}, limit{rows};
-  };
-
 
 template <
     std::floating_point num,
@@ -171,10 +49,11 @@ template <
 
         for( auto& p : vocab ){ p.second = idx++; }
 
-        cols = --idx;
+        cols = idx;
 
         for( sparse_vec& vec : encoded_mtx ) { vec.resize(cols); }
-        for( sparse_vec& vec : loading_mtx ) { vec.resize(cols); }
+        
+        id_vec.resize(cols);
         target.resize(cols);
       }
 
@@ -192,7 +71,7 @@ template <
 
       std::size_t current_size() const { return limit; }
 
-      constexpr std::size_t out_size(){ return 2 * case_size + nums_size + punc_size; }
+      constexpr std::size_t out_size(){ return 2 * case_size + nums_size + punc_size + 1; }
 
       const std::vector<num>& operator[]( const std::size_t i ) const { return encoded_mtx[i]; }
             std::vector<num>& operator[]( const std::size_t i )       { return encoded_mtx[i]; }
@@ -241,6 +120,9 @@ template <
             encoded_mtx[i][j] = (j == tmp);
           }
         }
+
+        this->unique_id(encoded_mtx, id_vec);
+
         current = 0; limit = inp.size();
       }
 
@@ -270,144 +152,44 @@ template <
         }
       }
 
+      auto begin() const { return encoded_mtx.begin(); }
+      auto begin()       { return encoded_mtx.begin(); }
+      auto end()   const { return encoded_mtx.end(); }
+      auto end()         { return encoded_mtx.end(); }
+
     private:
+        
+      void unique_id(sparse_mtx& mtx, sparse_vec& vec){
+
+        using namespace std;
+
+        std::fill(vec.begin(), vec.end(), (num)0);
+
+        for(const auto& row : mtx){
+          std::transform(row.cbegin(), row.cend(), vec.cbegin(), vec.begin(), std::plus<float>{});
+        }
+
+        num negative = -std::accumulate(vec.rbegin(), vec.rend(), (num)0, [incr = (num)1](const auto& x, const auto& y) mutable { return x + (y / incr++); });
+        num positive =  std::accumulate(vec.cbegin(), vec.cend(), (num)0, [incr = (num)1](const auto& x, const auto& y) mutable { return x + (y / incr++); });
+
+        num encode = negative + positive; 
+
+        for(auto& row : mtx) {
+          std::transform(row.begin(), row.end(), row.begin(), [encode](const auto& x){ return ((num)0 < x) ? encode : (num)0; });
+        }
+      }
+
       std::ifstream ifs; 
       std::string inp_str{""};
 
       encodings   vocab;
       sparse_mtx  encoded_mtx;
-      sparse_mtx  loading_mtx;
-      sparse_vec  target;
+      sparse_vec  target, id_vec;
       std::size_t current{0}, limit{rows}, cols{0};
   };
 
-
-  template <
-    std::floating_point num,
-    std::size_t         rows
-  > class one_hot< num, rows, encoder::cust >{
-    
-    const std::size_t cols = case_size + 1;
-
-    public:
-      using sparse_mtx  = std::array<std::vector<num>, rows>;
-      using sparse_vec  = std::vector<num>;
-
-      one_hot(std::string str){
-        
-        ifs.open(str);
-
-        char c;
-        while(ifs.get(c)){ if(!vocab.contains(c)){ vocab[c] = 0; } }
-        
-        std::size_t idx{0};
-        for( auto& p : vocab ){ p.second = idx++; }
-
-        for( sparse_vec& vec : encoded_mtx ) { vec.resize(cols); }
-        for( sparse_vec& vec : loading_mtx ) { vec.resize(cols); }
-        target.resize(cols);
-
-      }
-        
-      const sparse_vec& cycle_inp() { 
-        if( current < limit ){
-          return encoded_mtx[current++];
-        }
-
-        else {
-          current = 1; return encoded_mtx[0];
-        }
-      }
-
-      const sparse_vec& get_trg() const { return target; }
-
-      std::size_t current_size(){ return limit; }
-
-      const std::vector<num>& operator[]( const std::size_t i ) const { return encoded_mtx[i]; }
-            std::vector<num>& operator[]( const std::size_t i )       { return encoded_mtx[i]; }
-
-      void display_inp()   const {
-        std::cout << "| Encoded Matrix |\n\n";
-        for( std::size_t i{0}; i < limit; ++i ){
-          std::cout << '\t';
-        for( std::size_t j{0}; j < cols;  ++j ){
-          std::cout << encoded_mtx[i][j] << ' ';
-        } std::cout << '\n';
-        } std::cout << '\n';
-      }
-
-      void display_trg()   const {
-        std::cout << "| Target Vector |\n\n\t";
-        for( const float& x : target ){
-          std::cout << x << ' ';
-        } std::cout << "\n\n";
-      }
-
-      void display_vocab() const {
-        std::cout << "{ Custom Map }\n\n";
-        for( auto& p : vocab ){
-          std::cout << '\t' << p.first << " : " << p.second << '\n';
-        } std::cout << '\n';
-      }
-
-      void encode( const std::string& inp, char trg ){
-
-        std::size_t tmp{ vocab[trg] };
-
-        for( std::size_t i{0}; i < target.size(); ++i ){
-          target[i] = (i == tmp);
-        }
-
-        for( std::size_t i{0}; i < inp.size(); ++i ){
-
-          tmp = vocab[inp[i]];
-
-          for( std::size_t j{0}; j < cols;     ++j ){
-            encoded_mtx[i][j] = (j == tmp);
-          }
-        }
-        current = 0; limit = inp.size();
-      }
-
-      void open_file(const std::string& filepath){
-        
-        ifs.open(filepath);
-
-      }
-
-      bool next_input(){
-
-        if( std::getline(ifs, inp_str) ){
-
-          if( rows < inp_str.length() ) {
-            encode(std::string(inp_str.c_str(), rows), inp_str[rows]);
-          }
-
-          else {
-            encode(std::string(inp_str.c_str(), inp_str.size() - 1), inp_str.back());
-          }
-
-          return true;
-        }
-
-        else {
-          return false;
-        }
-      }
-
-    private:
-      std::ifstream ifs; 
-      std::string inp_str{""};
-
-      encodings   vocab;
-      sparse_mtx  encoded_mtx;
-      sparse_mtx  loading_mtx;
-      sparse_vec  target;
-      std::size_t current{0}, limit{rows};
-  };
-
 }
-
+  
 namespace sampler {
   
   class indexical {
@@ -427,12 +209,19 @@ namespace sampler {
       }
 
       template <class logit_arr>
-      std::size_t sample_top( const logit_arr& logits ){
+      std::size_t sample_top_n( const logit_arr& logits ){
 
           sort_indexes(logits);
 
           return indexes[distribution(gen)];
       }
+
+      template <class logit_arr>
+      std::size_t sample_top( const logit_arr& logits ){
+
+        return (std::size_t)std::distance(logits.begin(), std::max_element(logits.begin(), logits.end()));
+      }
+
 
     private:
 

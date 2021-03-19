@@ -25,7 +25,7 @@ namespace logit {
         sensors.reserve(num_s); 
         weights.reserve(num_s);
 
-        avg_rcp = (num)1 / num_s;
+        avg_rcp = (num)1 / (num)num_s;
 
         while( 0 < num_s-- ){ 
           sensors.emplace_back(s_size);
@@ -163,7 +163,7 @@ namespace logit {
       dynamic& operator=( const dynamic& other ) = default;
       dynamic& operator=( const num& x ){ this->stimuli = x; return *this; }
 
-      void calibrate( num lr = 0.01 ){
+      void calibrate( num lr = 0.1 ){
         
         for( std::size_t i{0}; i < this->sensors.size(); ++i ){
           this->sensors[i].calibrate(this->error * this->weights[i] * this->avg_rcp, lr); 
