@@ -108,10 +108,10 @@ namespace logit {
 
     public:
       sequential() = default;
-      sequential( std::size_t num_s, std::size_t s_size ){ this->initialize(num_s, s_size); };
+      sequential( std::size_t num_s, std::size_t s_size ) : avg_rcp((num)1 / avg_rcp) { this->initialize(num_s, s_size); };
 
       num  operator()() const { return this->stimuli; }
-      void operator()(  const std::size_t& i, const num& x ){ this->stimuli += this->weights[i] * this->sensors[i](x); }
+      void operator()(  const std::size_t& i, const num& x ){ this->stimuli += this->weights[i] * this->sensors[i](x) * avg_rcp; }
 
       sequential& operator=( const sequential& other ) = default;
       sequential& operator=( const num& x ){ this->stimuli = x; return *this; }
@@ -119,14 +119,16 @@ namespace logit {
       void calibrate( num lr = 0.01 ){
         
         for( std::size_t i{0}; i < this->sensors.size(); ++i ){
-          this->sensors[i].calibrate(this->error * this->weights[i], lr); 
-          this->weights[i] -= this->error * this->sensors[i].signal * lr;
+          this->sensors[i].calibrate(this->error * this->weights[i] * avg_rcp, lr); 
+          this->weights[i] -= this->error * this->sensors[i].signal * avg_rcp * lr;
         }
         this->reset();
       }
 
-      num dy_dx( const std::size_t& i, const num& x ){ return this->weights[i] * this->sensors[i].dy_dx(x) * this->error; }; 
+      num dy_dx( const std::size_t& i, const num& x ){ return this->weights[i] * this->sensors[i].dy_dx(x) * this->error * avg_rcp; };
 
+    private:
+      num avg_rcp{1};
   };
 
   template < 
@@ -135,10 +137,10 @@ namespace logit {
 
     public:
       dynamic() = default;
-      dynamic( std::size_t num_s, std::size_t s_size ){ this->initialize(num_s, s_size); };
+      dynamic( std::size_t num_s, std::size_t s_size ) : avg_rcp((num)1 / avg_rcp) { this->initialize(num_s, s_size); };
 
       num  operator()() const { return this->stimuli; }
-      void operator()(  const std::size_t& i, const num& x ){ this->stimuli += this->weights[i] * this->sensors[i](x); }
+      void operator()(  const std::size_t& i, const num& x ){ this->stimuli += this->weights[i] * this->sensors[i](x) * avg_rcp; }
 
       dynamic& operator=( const dynamic& other ) = default;
       dynamic& operator=( const num& x ){ this->stimuli = x; return *this; }
@@ -146,14 +148,16 @@ namespace logit {
       void calibrate( num lr = 0.01 ){
         
         for( std::size_t i{0}; i < this->sensors.size(); ++i ){
-          this->sensors[i].calibrate(this->error * this->weights[i], lr); 
-          this->weights[i] -= this->error * this->sensors[i].signal * lr;
+          this->sensors[i].calibrate(this->error * this->weights[i] * avg_rcp, lr); 
+          this->weights[i] -= this->error * this->sensors[i].signal * avg_rcp * lr;
         }
         this->reset();
       }
 
-      num dy_dx( const std::size_t& i, const num& x ){ return this->weights[i] * this->sensors[i].dy_dx(x) * this->error; }; 
+      num dy_dx( const std::size_t& i, const num& x ){ return this->weights[i] * this->sensors[i].dy_dx(x) * this->error * avg_rcp; };
 
+    private:
+      num avg_rcp{1};
   };
 
 

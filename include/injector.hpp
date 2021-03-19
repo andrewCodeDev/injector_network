@@ -164,9 +164,6 @@ namespace injector {
         l_pos(i, r_inp[i]); 
       }
 
-      // display_output();
-      activation::min_max<num>(logits);
-      // activation::abs_max<num>(logits);
       activation::softmax<num>(logits);
     }
 
@@ -233,7 +230,7 @@ namespace injector {
           l_pos(i, logits_a[i]());
         }
       }
-        // activation::softmax<num>(logits_b);
+        activation::softmax<num>(logits_b);
       }
 
       template<class container>
