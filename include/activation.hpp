@@ -41,7 +41,6 @@ namespace activation {
     num max_stm = (*std::max_element(logits.cbegin(), logits.cend()))();
     num rcp     = static_cast<num>(1) / (max_stm - min_stm);
 
-    // for(auto& l_pos : logits) { l_pos = l_pos() * rcp; l_pos.mul_error(rcp); }
     for(auto& l_pos : logits) { l_pos = (l_pos() - min_stm) * rcp; l_pos.mul_error(rcp); }
   }
  

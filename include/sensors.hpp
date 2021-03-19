@@ -217,6 +217,15 @@ namespace sensor {
         this->signal = 0;
       }
 
+      void reset(){
+        this->signal = 0;
+        for( auto& m : this->data ) {
+          m.rate_upd = 0;
+          m.cntr_upd = 0;
+          m.coef_upd = 0;
+        }
+      }
+
       num operator()( const num& x ){
 
         this->signal = std::transform_reduce(std::execution::seq, this->data.cbegin(), this->data.cend(), static_cast<num>(0), std::plus<num>{},
@@ -239,6 +248,7 @@ namespace sensor {
         return this->signal;
       }
 
+    
   };
 
 
@@ -285,11 +295,27 @@ namespace sensor {
         }
 
       void calibrate(const num& error, num lr = 0.01 ){
+        
+        this->signal = 0;
         for( auto& m : this->data ) {
           m.rate -= m.rate_upd * error * lr;
           m.cntr -= m.cntr_upd * error * lr;
           m.coef -= m.coef_upd * error * lr;
 
+          m.rate_upd = 0;
+          m.cntr_upd = 0;
+          m.coef_upd = 0;
+
+          m.rate_dyn = 0;
+          m.cntr_dyn = 0;
+          m.coef_dyn = 0;
+
+          m.dx_mem   = 0;
+        }
+      }
+
+      void reset(){
+        for( auto& m : this->data ){
           m.rate_upd = 0;
           m.cntr_upd = 0;
           m.coef_upd = 0;

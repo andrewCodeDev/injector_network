@@ -103,7 +103,6 @@ namespace injector {
         l_pos(i, r_inp[i]); 
       }
 
-      // activation::abs_max<num>(logits);
       activation::softmax<num>(logits);
     }
 
@@ -214,6 +213,14 @@ namespace injector {
       };
 
       std::size_t size() const { return out_size; }
+
+      void reset_logits(){
+        for( auto& l_pos : logits_a ){ l_pos.full_reset(); }
+        for( auto& l_pos : logits_b ){ l_pos.full_reset(); }
+      }
+
+      const std::array<logit::sequential<num>, out_size>& output() const { return logits_b; }
+            std::array<logit::sequential<num>, out_size>& output()       { return logits_b; }
 
       template<class container>
       void forward( const container& inp ){

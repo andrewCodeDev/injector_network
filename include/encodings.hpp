@@ -255,11 +255,6 @@ template <
         if( std::getline(ifs, inp_str) ){
 
           if( rows < inp_str.size() ) {
-
-            std::cout << inp_str << '\n';
-            std::cout << inp_str.substr(0, rows) << '\n';
-            std::cout << inp_str[rows] << '\n';
-
             encode(inp_str.substr(0, rows), inp_str[rows]);
           }
 
@@ -431,8 +426,8 @@ namespace sampler {
         } std::cout << "\n\n";
       }
 
-      template <class logit_t>
-      std::size_t sample_top( const std::vector<logit_t> &logits ){
+      template <class logit_arr>
+      std::size_t sample_top( const logit_arr& logits ){
 
           sort_indexes(logits);
 
@@ -441,8 +436,8 @@ namespace sampler {
 
     private:
 
-      template <class logit_t>
-      void sort_indexes( const std::vector<logit_t> &logits ){
+      template <class logit_arr>
+      void sort_indexes( const logit_arr& logits ){
 
         std::iota(indexes.begin(), indexes.end(), 0);
 
