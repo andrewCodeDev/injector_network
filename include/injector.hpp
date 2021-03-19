@@ -102,26 +102,23 @@ namespace injector {
     }
 
     template<class container>
-    void forward( const container& inp ){
-
-      for( auto& r_inp : inp    )
-      for( auto& l_pos : logits )
-      for( std::size_t i{0}; i < r_inp.size(); ++i ){
-        l_pos(i, r_inp[i]); 
+    void forward( const container& packets ){
+      
+      for( auto& packet : packets ){
+        for( auto& l_pos : logits ){ l_pos(packet.first, packet.second); }
       }
-
-      activation::softmax<num>(logits);
+      activation::softmax_diff<num>(logits);
     }
 
-    template<class container>
-    void calibrate( const container& trg ){
-      for( std::size_t i{0}; i < logits.size(); ++i ){
-        logits[i].mul_error(( -trg[i] / logits[i]() ) / (num)trg.size() );
-        // logits[i].mul_error( logits[i]() - trg[i] );
-        logits[i].calibrate();
-      }
-    }
+    void calibrate( const std::size_t& trg ){
 
+      // for( std::size_t i{0}; i < logits.size(); ++i ){
+        logits[trg].mul_error( -(num)1 / logits[trg]() );
+        // logits[i].mul_error( logits[i]() - (num)(i == trg) );
+        logits[trg].calibrate();
+
+        for( auto& l_pos : logits ){ l_pos.full_reset(); }
+    }
     void display_output(){
       for( clogit_ref l_pos : logits ){
         std::cout << l_pos() << ' ';
@@ -137,6 +134,8 @@ namespace injector {
     }
 
   };
+
+/*
 
   template <
     std::floating_point num,
@@ -208,6 +207,71 @@ namespace injector {
 
   };
 
+*/
+
+  template <
+    std::floating_point num,
+    std::size_t         out_size
+  > class shallow< num, out_size, logit::dyn >{
+
+  private:
+
+    std::array<logit::dynamic<num>, out_size> logits;
+
+  public:
+
+    using clogit_ref = const logit::dynamic<num>&;
+    using  logit_ref =       logit::dynamic<num>&;
+
+    shallow( const std::size_t& inp_size, const std::size_t& n_terms ){
+      for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
+    };
+
+    std::array<logit::dynamic<num>, out_size>& output() const { return logits; }
+    std::array<logit::dynamic<num>, out_size>& output()       { return logits; }
+
+    std::size_t size() const { return logits.size(); }
+
+    clogit_ref operator[]( const std::size_t& i ) const { return logits[i]; }
+     logit_ref operator[]( const std::size_t& i )       { return logits[i]; }
+
+    void reset_logits(){
+      for( auto& l_pos : logits ){ l_pos.full_reset(); }
+    }
+
+    template<class container>
+    void forward( const container& packets ){
+      
+      for( auto& packet : packets ){
+        for( auto& l_pos : logits ){ l_pos(packet.first, packet.second); }
+      }
+      activation::softmax_diff<num>(logits);
+    }
+
+    void calibrate( const std::size_t& trg ){
+
+      for( std::size_t i{0}; i < logits.size(); ++i ){
+        // logits[i].mul_error( -(num)(i == trg) / logits[i]() );
+        logits[i].mul_error( logits[i]() - (num)(i == trg) );
+        logits[i].calibrate();
+      }
+    }
+
+    void display_output(){
+      for( clogit_ref l_pos : logits ){
+        std::cout << l_pos() << ' ';
+      } std::cout << '\n';
+    }
+
+    void display_formulas(){
+      for( clogit_ref l_pos : logits ){
+      for( std::size_t i{0}; i < logits.size(); ++i ){
+        standard_form(l_pos[i]);
+      } std::cout << '\n';
+      } std::cout << '\n';
+    }
+
+  };
 
 // bilayer ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -301,8 +365,6 @@ namespace injector {
       }
 
   };
-
-
 
 
   template <

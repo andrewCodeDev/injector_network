@@ -188,6 +188,138 @@ template <
       std::size_t current{0}, limit{rows}, cols{0};
   };
 
+
+// packet encoders ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+template <std::floating_point num> class packet {
+    
+    public:
+
+      using packet_vec  = std::vector<std::pair<std::size_t, num>>;
+      using sparse_vec  = std::vector<num>;
+
+      packet( std::size_t example_size ){
+        vocab[' '] = 0;
+        for(const auto& c : numeric )       { vocab[c] = 0; }
+        for(const auto& c : punctuation )   { vocab[c] = 0; }
+        for(const auto& c : lower_alphabet ){ vocab[c] = 0; }
+        for(const auto& c : upper_alphabet ){ vocab[c] = 0; }
+
+        for( auto& p : vocab ){ p.second = cols++; }
+
+        packets.resize(example_size);
+        id_vec.resize(cols);
+      }
+
+      const std::pair<std::size_t, num>& cycle_inp() { 
+        if( current < limit ){
+          return packets[current++];
+        }
+
+        else {
+          current = 1; return packets[0];
+        }
+      }
+
+      std::size_t current_size() const { return limit; }
+
+      constexpr std::size_t out_size(){ return 2 * case_size + nums_size + punc_size + 1; }
+
+      const std::vector<num>& operator[]( const std::size_t i ) const { return packets[i]; }
+            std::vector<num>& operator[]( const std::size_t i )       { return packets[i]; }
+
+      
+      std::size_t get_trg() { return target; }
+
+      void display_inp()   const {
+        std::cout << "| Input Characers | {'";
+        for( std::size_t i{0}; i < limit; ++i) {
+          std::cout << '(' << idx_to_char(packets[i].first) << ", " << packets[i].second << ") ";
+        } std::cout << "\b}\n\n";
+      }
+
+      void display_trg()   const {
+        std::cout << "| Target | {"<< target << ", '" << idx_to_char(target) << "'}\n\n";
+      }
+
+      void display_vocab() const {
+        std::cout << "{ Lowercase Map }\n\n";
+        for( auto& p : vocab ){
+          std::cout << '\t' << p.first << " : " << p.second << '\n';
+        } std::cout << '\n';
+      }
+
+      char idx_to_char( const std::size_t i ) const { return std::next(vocab.begin(), i)->first; }
+
+      void open_file( const std::string& filepath ){
+        
+        ifs.open(filepath);
+
+      }
+
+      bool next_input(){
+
+        if( std::getline(ifs, inp_str) ){
+
+          encode(inp_str);
+
+          return true;
+        }
+
+        else {
+
+          return false;
+
+        }
+      }
+
+      auto begin() const { return packets.begin(); }
+      auto begin()       { return packets.begin(); }
+      auto end()   const { return packets.begin() + limit; }
+      auto end()         { return packets.begin() + limit; }
+
+    private:
+      num unique_id( const std::string& str ){
+
+        std::fill(id_vec.begin(), id_vec.end(), (num)0);
+
+        for(const auto& c : str){ id_vec[ vocab[c] ] += (num)1; }
+
+        num negative = -std::accumulate(id_vec.rbegin(), id_vec.rend(), (num)0, [incr = (num)1](const auto& x, const auto& y) mutable { return x + (y / incr++); });
+        num positive =  std::accumulate(id_vec.cbegin(), id_vec.cend(), (num)0, [incr = (num)1](const auto& x, const auto& y) mutable { return x + (y / incr++); });
+
+        return negative + positive; 
+
+      }
+      
+      void encode( const std::string& inp ){
+
+        num uid = unique_id(inp); std::size_t i{0};
+
+        while( i < inp.size() - 1 && i < packets.size() - 1 ){
+
+          packets[i].first  = vocab[ inp[i] ];
+          packets[i].second = uid;
+        
+          ++i;
+        }
+
+        target  = vocab[ inp[i] ];
+        limit   = i;
+        current = 0; 
+      }
+
+      std::ifstream ifs; 
+      std::string inp_str{""};
+
+      encodings   vocab;
+      sparse_vec  id_vec;
+      packet_vec  packets;
+      std::size_t current{0}, limit{0}, cols{0}, target{0};
+  };
+
+
 }
   
 namespace sampler {

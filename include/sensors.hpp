@@ -14,7 +14,7 @@
 
 template <
   std::floating_point FT
-> FT rand_gen(){ return 0.01 * ((FT)rand() / (FT)RAND_MAX * (FT)2 - (FT)1); }
+> FT rand_gen(){ return ((FT)rand() / (FT)RAND_MAX * (FT)2 - (FT)1); }
 
 template <
   class T
