@@ -14,7 +14,7 @@ int main(void){
   sampler::indexical idx_sampler(p_enc1.out_size(), 5);
 
   // network ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  injector::shallow<float, p_enc1.out_size(), logit::dyn> inj_net(p_enc1.out_size(), 3);
+  injector::shallow<float, p_enc1.out_size(), logit::seq> inj_net(p_enc1.out_size(), 3);
 
 
   // injector::bilayer<float, p_enc1.out_size(), logit::dyn, logit::seq> inj_net(p_enc1.out_size(), 3);
@@ -28,12 +28,17 @@ int main(void){
 
   p_enc1.display_trg();
 
-  std::cout << inj_net.size() << '\n';
+  // std::cout << p_enc1.current_size() << '\n';
+
+  for( auto& x : p_enc1 ) { std::cout << x.first << ' '; }
+
+  std::cout << inj_net.output().size() << '\n';
+
  
-  for( std::size_t epoch{0}; epoch < 10'000; ++epoch ){
+  for( std::size_t epoch{0}; epoch < 2'000; ++epoch ){
 
     inj_net.forward(p_enc1);
-    if(epoch % 1'000 == 0){ inj_net.display_output(); std::cout << '\n'; }
+    if(epoch % 100 == 0){ inj_net.display_output(); std::cout << '\n'; }
     inj_net.calibrate(p_enc1.get_trg());
 
     inj_net.forward(p_enc2);

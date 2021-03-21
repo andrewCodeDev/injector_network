@@ -1,2 +1,2 @@
 
-Scale dynamic logit updates - consider cube root?
+fix reset redundancy - low priority

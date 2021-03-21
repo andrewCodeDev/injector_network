@@ -6,34 +6,37 @@
 
 namespace logit {
 
-  struct imd { };
-  struct seq { };
-  struct dyn { };
-
-
   // logit base ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
   
   template<std::floating_point num, typename sns_type> class logit_base {
 
     public:
 
-      const sns_type& operator[](const std::size_t& i ) const { return sensors[i]; }
-            sns_type& operator[](const std::size_t& i )       { return sensors[i]; }
+      using float_type = num;
 
-      void initialize( std::size_t num_s, std::size_t s_size ){
-        sensors.reserve(num_s); 
+      logit_base() = default;
+      logit_base( size_t num_s, size_t s_size ){ initialize(num_s, s_size); };
+      
+      logit_base& operator=( const logit_base& other ) = default;
+      logit_base& operator=( const num& x ){ stimuli = x; return *this; }
+
+    // sensor creation ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      void initialize( size_t num_s, const size_t& s_size ){
+        bias.reserve(num_s);
         weights.reserve(num_s);
+        sensors.reserve(num_s); 
 
         avg_rcp = (num)1 / (num)num_s;
 
         while( 0 < num_s-- ){ 
-          sensors.emplace_back(s_size);
+          bias.emplace_back(rand_gen<num>());
           weights.emplace_back(rand_gen<num>());
+          sensors.emplace_back(s_size);
         }
       }
 
-      void add_sensor( std::size_t new_s, const std::size_t& n_terms ){
+      void add_sensor( size_t new_s, const size_t& n_terms ){
         while( 0 < new_s-- ){
           sensors.emplace_back(sns_type(n_terms));
           weights.emplace_back(rand_gen<num>());
@@ -42,27 +45,59 @@ namespace logit {
           weights.shrink_to_fit();
       };
 
-      void rmv_sensor( std::size_t rmv_s ){
-        while( 0 < rmv_s-- ){ sensors.pop_back(); }
+    // stimuli functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      void take(const size_t& i, const num& x ){ 
+        stimuli += avg_rcp * (bias[i] + weights[i] * sensors[i](x));
       }
 
-      auto begin() const { return sensors.begin(); }
-      auto end()   const { return sensors.end();   }
+      num view() const { return stimuli; }
 
-      auto cbegin() const { return sensors.cbegin(); }
-      auto cend()   const { return sensors.cend();   }
+      num send(){ sent = true; return stimuli; }
 
-      auto begin() { return sensors.begin(); }
-      auto end()   { return sensors.end();   }
+    // error functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      auto rbegin() { return sensors.rbegin(); }
-      auto rend()   { return sensors.rend();   }
+      void calibrate( num lr = 0.1 ){
+        for( size_t i{0}; i < sensors.size(); ++i ){
+          
+          weights[i] -= error * avg_rcp * sensors[i] * lr;
+          
+          bias[i]    -= error * avg_rcp * lr;
 
-      std::size_t size() const { return sensors.size(); }
+          sensors[i].calibrate(error * weights[i] * avg_rcp, lr); 
+        }
+        this->logit_reset();
+      }
 
-      void add_error( const num& dx ){ error += dx; }
       void mul_error( const num& dx ){ error *= dx; }
-      num  get_error(){ return error; }
+
+      num view_error(){ return error; }
+
+    // reset functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      void logit_reset(){ 
+        stimuli = 0;
+        error   = 1;
+        sent    = false;
+      }
+      
+      void sensor_reset(){ 
+        for( auto& sns : sensors ){ sns.reset(); };
+      }
+
+      void full_reset() {
+        logit_reset();
+        sensor_reset();
+      }
+
+    // helper functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      operator bool() { return sent; }
+
+      size_t size() const { return sensors.size(); }
+
+      const sns_type& operator[](const size_t& i ) const { return sensors[i]; }
+            sns_type& operator[](const size_t& i )       { return sensors[i]; }
 
       friend bool operator==( const logit_base& lhs, const logit_base& rhs ){ return lhs.stimuli == rhs.stimuli; }
       friend bool operator!=( const logit_base& lhs, const logit_base& rhs ){ return lhs.stimuli != rhs.stimuli; }
@@ -72,108 +107,28 @@ namespace logit {
       friend bool operator> ( const logit_base& lhs, const logit_base& rhs ){ return lhs.stimuli >  rhs.stimuli; }
   
     protected:
-      std::vector<num> weights;
+
+      bool sent{false};
       std::vector<sns_type> sensors;
+      std::vector<num> weights, bias;
       num stimuli{0}, error{1}, avg_rcp{1};
   };
 
 
-  // logit types ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // logit types based on sensor ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+  // shorthand for network arguments
 
-  template < 
-    std::floating_point num
-  > class immediate : public logit_base<num, sensor::IMDsensor<num>>{
+  struct imd { };
+  struct seq { };
 
-    public:
-      immediate() = default;
-      immediate( std::size_t num_s, std::size_t s_size ){ this->initialize(num_s, s_size); };
+  // logit type defs ~~~~~~~~~~~~~~
 
-      num  operator()() const { return this->stimuli; }
-      void operator()(  const std::size_t& i, const num& x ){ this->stimuli += this->weights[i] * this->sensors[i](x); }
+  template<std::floating_point num>
+  using immediate = logit_base<num, sensor::immediate<num>>;
 
-      immediate& operator=( const immediate& other ) = default;
-      immediate& operator=( const num& x ){ this->stimuli = x; return *this; }
-
-      void reset() { this->stimuli = 0; this->error = 1; }
-
-      void calibrate ( const std::size_t& i, const num& x, num lr = 0.01 ){
-        this->sensors[i].calibrate(x, this->error * this->weights[i]); 
-        this->weights[i] -= this->error * this->sensors[i].signal * lr;
-      }
-
-      num dy_dx( const std::size_t& i, const num& x ){ return this->weights[i] * this->sensors[i].dy_dx(x) * this->error; }
-  };
-
-  template < 
-    std::floating_point num
-  > class sequential : public logit_base<num, sensor::SEQsensor<num>>{
-
-    public:
-      sequential() = default;
-      sequential( std::size_t num_s, std::size_t s_size ){ this->initialize(num_s, s_size); };
-
-      num  operator()() const { return this->stimuli; }
-      void operator()(  const std::size_t& i, const num& x ){ this->stimuli += this->weights[i] * this->sensors[i](x) * this->avg_rcp; }
-
-      sequential& operator=( const sequential& other ) = default;
-      sequential& operator=( const num& x ){ this->stimuli = x; return *this; }
-
-      void full_reset() {
-        this->stimuli = 0; 
-        this->error   = 1;
-
-        for( auto& s_pos : this->sensors ){ s_pos.reset(); }
-      }
-
-      void reset(){ this->stimuli = 0; this->error = 1; }
-
-      void calibrate( num lr = 0.01 ){
-        
-        for( std::size_t i{0}; i < this->sensors.size(); ++i ){
-          this->sensors[i].calibrate(this->error * this->weights[i] * this->avg_rcp, lr); 
-          this->weights[i] -= this->error * this->sensors[i].signal * this->avg_rcp * lr;
-        }
-        this->reset();
-      }
-
-      num dy_dx( const std::size_t& i, const num& x ){ return this->weights[i] * this->sensors[i].dy_dx(x) * this->error * this->avg_rcp; };
-  };
-
-  template < 
-    std::floating_point num
-  > class dynamic : public logit_base<num, sensor::DYNsensor<num>>{
-
-    public:
-      dynamic() = default;
-      dynamic( std::size_t num_s, std::size_t s_size ){ this->initialize(num_s, s_size); };
-
-      num  operator()() const { return this->stimuli; }
-      void operator()(  const std::size_t& i, const num& x ){ this->stimuli += this->weights[i] * this->sensors[i](x) * this->avg_rcp; }
-
-      void full_reset() {
-        this->stimuli = 0; 
-        this->error   = 1;
-
-        for( auto& s_pos : this->sensors ){ s_pos.reset(); }
-      }
-
-      void reset(){ this->stimuli = 0; this->error = 1; }
-
-      dynamic& operator=( const dynamic& other ) = default;
-      dynamic& operator=( const num& x ){ this->stimuli = x; return *this; }
-
-      void calibrate( num lr = 0.1 ){
-        
-        for( std::size_t i{0}; i < this->sensors.size(); ++i ){
-          this->sensors[i].calibrate(this->error * this->weights[i] * this->avg_rcp, lr); 
-          this->weights[i] -= this->error * this->sensors[i].signal * this->avg_rcp * lr;
-        }
-        this->reset();
-      }
-
-      num dy_dx( const std::size_t& i, const num& x ){ return this->weights[i] * this->sensors[i].dy_dx(x) * this->error * this->avg_rcp; };
-  };
+  template<std::floating_point num>
+  using sequential = logit_base<num, sensor::sequential<num>>;
 
 
 }

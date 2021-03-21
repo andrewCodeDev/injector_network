@@ -10,7 +10,7 @@
 
 #include "activation.hpp"
 
-// immediate helper functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// sensor helper functions ~~~~~~~~~~~~~~~~~~~~
 
 template <
   std::floating_point FT
@@ -30,24 +30,21 @@ template <
 }
 
 
-//sensor ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// sensor ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-namespace logit {
-
-template <std::floating_point num> class dynamic;
-template <std::floating_point num> class immediate;
-template <std::floating_point num> class sequential;
-
-}
 
 namespace sensor {
 
-  // base formula modifiers ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  template<std::floating_point num> struct IMDmodifier { num coef{1}, rate{1}, cntr{0}; };
-  template<std::floating_point num> struct SEQmodifier { num coef{1}, rate{1}, cntr{0}, coef_upd{0}, rate_upd{0}, cntr_upd{0}; };
+  // base formula values~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  template<std::floating_point num> struct imd_term_values {
+    num coef{1},     rate{1},     cntr{0},
+        coef_upd{0}, rate_upd{0}, cntr_upd{0}; 
+  };
   
-  template<std::floating_point num> struct DYNmodifier {
+  template<std::floating_point num> struct seq_term_values {
     num coef{1},     rate{1},     cntr{0},
         coef_upd{0}, rate_upd{0}, cntr_upd{0},
         coef_dyn{0}, rate_dyn{0}, cntr_dyn{0},
@@ -58,11 +55,49 @@ namespace sensor {
   // sensor base class ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-  template<std::floating_point num, typename modifier> class sensor_base {
+  template<std::floating_point num, class term_values> class sensor_base {
 
     public:
-      const modifier& operator[](const std::size_t& i ) const { return data[i]; }
-            modifier& operator[](const std::size_t& i )       { return data[i]; }
+
+      sensor_base() = default;
+      sensor_base(const size_t& size){
+        this->data.resize(size);
+        for( auto& m : this->data ){
+          m.coef = rand_gen<num>();
+          m.rate = rand_gen<num>();
+          m.cntr = rand_gen<num>();
+        }
+      };
+
+      num dy_dx( const num& x ){
+
+        // assert( 0 < n_drv && n_drv < 3 );
+
+        // if( n_drv == 1 ) {
+          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
+            [&x](const auto& m) 
+            { 
+              num exp_m = std::exp(m.rate * (x - m.cntr));
+              return -(m.coef * m.rate * exp_m) / (((num)1 + exp_m) * ((num)1  + exp_m));
+            });
+        // }
+        
+        // if( n_drv == 2 ) {
+
+        //   return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{}, 
+        //     [&x](const auto& m)
+        //     { 
+        //       num exp_m = std::exp(m.rate * (x - m.cntr));
+        //       return -(m.coef * m.rate * m.rate * exp_m * (-exp_m + (num)1)) / (((num)1 + exp_m) * ((num)1 + exp_m) * ((num)1 + exp_m));
+        //     });
+        //   }
+
+        //   return 0.0f; // otherwise it complains
+        }
+
+      operator num() const { return signal; }
+
+      std::size_t size() const { return data.size(); }
 
       auto begin() const { return data.begin(); }
       auto begin()       { return data.begin(); }
@@ -75,17 +110,12 @@ namespace sensor {
       auto rbegin() { return data.rbegin(); }
       auto rend()   { return data.rend();   }
 
-      std::size_t size() const { return data.size(); }
+      auto& operator[](const std::size_t& i ) const { return data[i]; }
+      auto& operator[](const std::size_t& i )       { return data[i]; }
 
-      operator num() const { return signal; }
-    
     protected:
       num signal{0};
-      std::vector<modifier> data;
-
-      friend class logit::dynamic<num>;
-      friend class logit::immediate<num>;
-      friend class logit::sequential<num>;
+      std::vector<term_values> data;
   };
 
 
@@ -94,115 +124,11 @@ namespace sensor {
 
   template <
     std::floating_point num
-  > class IMDsensor : public sensor_base<num, IMDmodifier<num>>{
-
-    public:
-      IMDsensor() = default;
-      IMDsensor(const size_t& size){
-
-        this->data.resize(size);
-
-        for( auto& m : this->data ){
-          m.coef = rand_gen<num>();
-          m.rate = rand_gen<num>();
-          m.cntr = rand_gen<num>();
-        }
-      };
-      
-      num dy_dx( const num& x, std::size_t n_drv = 1 ){
-
-        assert( 0 < n_drv && n_drv < 3 );
-
-        if( n_drv == 1 ) {
-
-          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
-            [&x](const auto& m) 
-            { 
-              num e_p = std::exp(m.rate * (x - m.cntr));
-              return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
-            });
-        }
-        
-        if( n_drv == 2 ) {
-
-          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{}, 
-            [&x](const auto& m)
-            { 
-              num e_p = std::exp(m.rate * (x - m.cntr));
-              return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
-            });
-          }
-
-          return 0.0f; // otherwise it complains
-        }
-
-      void calibrate( const num& x, const num& error, num lr = 0.01 ){
-
-        num one{1}, adj{error * lr}, e_p, denom;
-          
-        for( auto& m : this->data ) {
-          e_p = std::exp(m.rate * (x - m.cntr)); 
-          denom = (one + e_p) * (one + e_p);
-
-          m.rate -=  ((-m.coef * (x - m.cntr) * e_p ) / denom ) * adj;
-          m.cntr -=  (( m.coef * m.rate * e_p ) / denom ) * adj;
-          m.coef -=  (one / (one + e_p)) * adj;
-        }
-        this->signal = 0;
-      }
-
-      num operator()( const num& x ){
-        this->signal = std::transform_reduce(std::execution::seq, this->data.cbegin(), this->data.cend(), static_cast<num>(0), std::plus<num>{},
-          [&x](const auto& m)
-          {
-            return m.coef / (static_cast<num>(1) + std::exp(m.rate * (x - m.cntr)));
-          });
-        return this->signal;
-      }
-
-  };
-
-  template <
-    std::floating_point num
-  > class SEQsensor : public sensor_base<num, SEQmodifier<num>>{
+  > class immediate final : public sensor_base<num, imd_term_values<num>>{
     
     public:
-      SEQsensor() = default;
-      SEQsensor(const size_t& size){
-        this->data.resize(size);
-        for( auto& m : this->data ){
-          m.coef = rand_gen<num>();
-          m.rate = rand_gen<num>();
-          m.cntr = rand_gen<num>();
-        }
-      };
-      
-      num dy_dx( const num& x, std::size_t n_drv = 1 ){
-
-        assert( 0 < n_drv && n_drv < 3 );
-
-        if( n_drv == 1 ) {
-
-          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
-            [&x](const auto& m) 
-            { 
-              num e_p = std::exp(m.rate * (x - m.cntr));
-              return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
-            });
-        }
-        
-        if( n_drv == 2 ) {
-
-          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{}, 
-            [&x](const auto& m)
-            { 
-              num e_p = std::exp(m.rate * (x - m.cntr));
-              return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
-            });
-          }
-
-          return 0.0f; // otherwise it complains
-        }
+      immediate() = default;
+      immediate(const size_t& size) : sensor_base<num, imd_term_values<num>>(size){ };
 
       void calibrate(const num& error, num lr = 0.01 ){
         for( auto& m : this->data ) {
@@ -227,72 +153,35 @@ namespace sensor {
       }
 
       num operator()( const num& x ){
+       
+        // memoize function calls;
+        num exp_m, div_m;
 
-        this->signal = std::transform_reduce(std::execution::seq, this->data.cbegin(), this->data.cend(), static_cast<num>(0), std::plus<num>{},
-          [&x](const auto& m)
-          {
-            return m.coef / (static_cast<num>(1) + std::exp(m.rate * (x - m.cntr)));
-          });
+        for( auto& m : this->data ){
 
-        num one{1}, e_p, denom;
+          exp_m = std::exp(m.rate * (x - m.cntr)); 
+          div_m = ((num)1 + exp_m) * ((num)1 + exp_m);
 
-        for( auto& m : this->data ) {
-          e_p = std::exp(m.rate * (x - m.cntr)); 
-          denom = (one + e_p) * (one + e_p);
+          this->signal += m.coef / ((num)1 + exp_m);
 
-          m.rate_upd += ((-m.coef * (x - m.cntr) * e_p ) / denom );
-          m.cntr_upd += (( m.coef * m.rate * e_p ) / denom );
-          m.coef_upd += (one / (one + e_p));
+          m.rate_upd += ((-m.coef * (x - m.cntr) * exp_m ) / div_m );
+          m.cntr_upd += (( m.coef * m.rate * exp_m ) / div_m );
+          m.coef_upd += ((num)1 / ((num)1 + exp_m));
         }
 
         return this->signal;
       }
 
-    
   };
 
 
   template <
     std::floating_point num
-  > class DYNsensor : public sensor_base<num, DYNmodifier<num>>{
+  > class sequential final : public sensor_base<num, seq_term_values<num>>{
     
     public:
-      DYNsensor() = default;
-      DYNsensor(const size_t& size){
-        this->data.resize(size);
-        for( auto& m : this->data ){
-          m.coef = rand_gen<num>();
-          m.rate = rand_gen<num>();
-          m.cntr = rand_gen<num>();
-        }
-      };
-      
-      num dy_dx( const num& x, std::size_t n_drv = 1 ){
-
-        assert( 0 < n_drv && n_drv < 3 );
-
-        if( n_drv == 1 ) {
-
-          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
-            [&x](const auto& m) 
-            { 
-              num e_p = std::exp(m.rate * (x - m.cntr));
-              return -(m.coef * m.rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
-            });
-        }
-        
-        if( n_drv == 2 ) {
-
-          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{}, 
-            [&x](const auto& m)
-            { 
-              num e_p = std::exp(m.rate * (x - m.cntr));
-              return -(m.coef * m.rate * m.rate * e_p * (-e_p + (num)1)) / (((num)1 + e_p) * ((num)1 + e_p) * ((num)1 + e_p));
-            });
-          }
-
-          return 0.0f; // otherwise it complains
-        }
+      sequential() = default;
+      sequential(const size_t& size) : sensor_base<num, seq_term_values<num>>(size){ };
 
       void calibrate(const num& error, num lr = 0.01 ){
         
@@ -357,12 +246,10 @@ namespace sensor {
 
       num g(const num& x, const num& coef, const num& rate, const num& cntr)
       {
-        num e_p = std::exp(rate * (x - cntr));
-        return -(coef * rate * e_p) / (((num)1 + e_p) * ((num)1  + e_p));
+        num exp_m = std::exp(rate * (x - cntr));
+        return -(coef * rate * exp_m) / (((num)1 + exp_m) * ((num)1  + exp_m));
       } 
   };
-
-
 
 }
 
