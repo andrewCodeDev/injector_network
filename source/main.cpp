@@ -1,8 +1,131 @@
 #include "../include/conflux.hpp"
 
-
 int main(void){
+srand(time(0));
 
+  encoder::packet<float> p_enc(29);
+
+  p_enc.open_file("/home/andrew/Documents/cpp_projects/scratch/algorithm/splicer_test/atlas_spl.txt");
+
+  sampler::indexical idx_sampler(p_enc.out_size(), 5);
+
+  // network ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  injector::shallow<float, p_enc.out_size(), logit::imd> inj_net(p_enc.out_size(), 3);
+
+  std::string test_str{"Socialism is "}, out_str{""};
+  
+  // char new_char;
+
+  for( std::size_t epoch{0}; epoch < 10; ++epoch ){
+
+  //   if( epoch % 1000 == 0 ){ 
+  
+  //     inj_net.reset_logits();
+      
+  //     for( std::size_t i{0}; i < 20; ++i ){
+        
+  //       p_enc.encode(test_str);
+
+  //       inj_net.forward(p_enc);
+
+  //       new_char = p_enc.idx_to_char( idx_sampler.sample_top(inj_net.output()) ); 
+        
+  //       out_str += new_char;
+
+  //       test_str = std::string(test_str, 1) + new_char;
+  //     }
+              
+  //     std::cout << '\n'; inj_net.display_output();
+
+  //     inj_net.reset_logits();
+
+  //     std::cout << out_str << '\n';
+
+  //     out_str = "";
+
+  //     test_str = "Socialism is ";
+  //   }
+
+  //   else {
+      p_enc.next_input();
+
+      p_enc.display_inp();
+      p_enc.display_trg();
+
+  //     inj_net.forward(p_enc);
+
+  //     inj_net.calibrate(p_enc.get_trg());
+  //   }
+
+  }
+
+  // encoder::packet<float> p_enc1(29);
+  // encoder::packet<float> p_enc2(29);
+  // encoder::packet<float> p_enc3(29);
+
+  // p_enc1.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
+  // p_enc2.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
+  // p_enc3.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
+
+  // sampler::indexical idx_sampler(p_enc1.out_size(), 5);
+
+  // // network ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // injector::shallow<float, p_enc1.out_size(), logit::seq> inj_net(p_enc1.out_size(), 3);
+
+
+  // // injector::bilayer<float, p_enc1.out_size(), logit::dyn, logit::seq> inj_net(p_enc1.out_size(), 3);
+
+  // p_enc1.next_input();
+  
+  // p_enc2.next_input(); p_enc2.next_input();
+  // p_enc3.next_input(); p_enc3.next_input(); p_enc3.next_input();
+
+  // p_enc1.display_vocab();
+
+  // p_enc1.display_trg();
+
+  // // std::cout << p_enc1.current_size() << '\n';
+
+  // for( auto& x : p_enc1 ) { std::cout << x.first << ' '; }
+
+  // std::cout << inj_net.output().size() << '\n';
+
+ 
+  // for( std::size_t epoch{0}; epoch < 20'000; ++epoch ){
+
+  //   inj_net.forward(p_enc1);
+  //   if(epoch % 1000 == 0){ inj_net.display_output(); std::cout << '\n'; }
+  //   inj_net.calibrate(p_enc1.get_trg());
+
+  //   inj_net.forward(p_enc2);
+  //   inj_net.calibrate(p_enc2.get_trg());
+
+  //   inj_net.forward(p_enc3);
+  //   inj_net.calibrate(p_enc3.get_trg());
+    
+  // }
+
+  // inj_net.reset_logits();
+
+  // inj_net.forward(p_enc1);
+  // std::cout << p_enc1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
+
+  // inj_net.reset_logits();
+
+  // inj_net.forward(p_enc2);
+  // std::cout << p_enc1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
+
+  // inj_net.reset_logits();  
+
+  // inj_net.forward(p_enc3);
+  // std::cout << p_enc1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
+  
+ 
+  std::cout << '\n';
+  return 0;
+}
+
+/*
   encoder::packet<float> p_enc1(29);
   encoder::packet<float> p_enc2(29);
   encoder::packet<float> p_enc3(29);
@@ -70,13 +193,6 @@ int main(void){
   // p_enc3.display_trg();
 
   // inj_net.display_formulas();
-  
- 
-  std::cout << '\n';
-  return 0;
-}
-
-/*
 
 
   for( std::size_t epoch{0}; epoch < 100'000; ++epoch ){
@@ -87,11 +203,11 @@ int main(void){
       
       for( std::size_t i{0}; i < 20; ++i ){
         
-        o_h.encode(test_str, ' ');
+        p_enc.encode(test_str, ' ');
 
-        inj_net.forward(o_h);
+        inj_net.forward(p_enc);
 
-        new_char = o_h.idx_to_char( idx_sampler.sample_top(inj_net.output()) ); 
+        new_char = p_enc.idx_to_char( idx_sampler.sample_top(inj_net.output()) ); 
 
         std::cout << "new_char: " << new_char << '\n';
         
@@ -112,11 +228,11 @@ int main(void){
     }
 
     else {
-      o_h.next_input();
+      p_enc.next_input();
 
-      inj_net.forward(o_h);
+      inj_net.forward(p_enc);
 
-      inj_net.calibrate(o_h.get_trg());
+      inj_net.calibrate(p_enc.get_trg());
     }
 
   }
@@ -137,18 +253,18 @@ int main(void){
 
   // splicer::character chr_spl(30, 1000);
 
-  // encoder::one_hot<float, 30, encoder::fndm> o_h;
+  // encoder::one_hot<float, 30, encoder::fndm> p_enc;
 
   // std::ifstream ifs("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/atlas_ref.txt");
   // std::ofstream ofs("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/atlas_spl.txt");
 
-  // chr_spl.splice_all(ifs, o_h.get_vocab());
+  // chr_spl.splice_all(ifs, p_enc.get_vocab());
 
   // chr_spl.write_file(ofs);
 
   // chr_spl.display_up_to(4);
 
-  // o_h.display_vocab();
+  // p_enc.display_vocab();
   
   // for(int epoch = 0; epoch < 10'000; ++epoch){
 

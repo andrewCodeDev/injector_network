@@ -14,11 +14,22 @@ namespace activation {
   template<std::floating_point num> void softmax_diff( auto& logits ){
 
     num denominator = std::transform_reduce( std::execution::seq, 
-      logits.cbegin(), logits.cend(), static_cast<num>(0), std::plus<num>{}, [](const auto& l_pos) { return std::exp(l_pos.view()); }
+      logits.cbegin(), logits.cend(), static_cast<num>(0), std::plus<num>{}, [](const auto& l_pos) { return std::exp(l_pos.view() + (num)1e-8); }
     );
     
     std::transform( std::execution::seq,
-      logits.cbegin(), logits.cend(), logits.begin(), [&denominator](const auto& l_pos){ return std::exp(l_pos.view()) / denominator; }
+      logits.cbegin(), logits.cend(), logits.begin(), [&denominator](const auto& l_pos){ return std::exp(l_pos.view()) /(denominator + 1e-8); }
+    );
+  }
+
+  template<std::floating_point num> void softmax_scaled( auto& logits ){
+
+    num denominator = std::transform_reduce( std::execution::seq, 
+      logits.cbegin(), logits.cend(), static_cast<num>(0), std::plus<num>{}, [](const auto& l_pos) { return std::exp(l_pos + (num)1e-8); }
+    );
+    
+    std::transform( std::execution::seq,
+      logits.cbegin(), logits.cend(), logits.begin(), [&denominator](const auto& l_pos){ return std::exp(l_pos) /(denominator + 1e-8); }
     );
   }
 
@@ -26,22 +37,24 @@ namespace activation {
   template<std::floating_point num> void softmax( auto& logits ){
 
     num denominator = std::transform_reduce( std::execution::seq, 
-      logits.cbegin(), logits.cend(), static_cast<num>(0), std::plus<num>{}, [](const auto& l_pos) { return std::exp(l_pos.view()); }
+      logits.cbegin(), logits.cend(), static_cast<num>(0), std::plus<num>{}, [](const auto& l_pos) { return std::exp(l_pos.view() + 1e-8); }
     );
     
     for( auto & l_pos : logits ){ 
-      l_pos = std::exp(l_pos.view()) / denominator;
+      l_pos = std::exp(l_pos.view()) / (denominator + (num)1e-8);
       l_pos.mul_error(l_pos.view() * ((num)1 - l_pos.view()));
     }
   }
 
-  template <std::floating_point num> void min_max( auto& logits ){
+  template <std::floating_point num> void min_max(auto& arr, auto& logits ){
 
     num min_stm = (*std::min_element(logits.cbegin(), logits.cend())).view();
     num max_stm = (*std::max_element(logits.cbegin(), logits.cend())).view();
     num rcp     = static_cast<num>(1) / (max_stm - min_stm);
 
-    for( auto& l_pos : logits ) { l_pos = (l_pos.view() - min_stm) * rcp; l_pos.mul_error(rcp); }
+    for( size_t i{0}; i < logits.size(); ++i ) {
+       arr[i] = (logits[i].view() - min_stm) * rcp; logits[i].mul_error(rcp); 
+    }
   }
  
 /* 

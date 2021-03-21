@@ -96,6 +96,24 @@ template <std::floating_point num> class packet {
         ifs.open(filepath);
 
       }
+            
+      void encode( const std::string& inp ){
+
+        // num uid = unique_id(inp);
+         std::size_t i{0};
+
+        while( i < inp.size() - 1 && i < packets.size() - 1 ){
+
+          packets[i].first  = vocab[ inp[i] ];
+          packets[i].second = 1;
+        
+          ++i;
+        }
+
+        target  = vocab[ inp[i] ];
+        limit   = i;
+        current = 0; 
+      }
 
       bool next_input(){
 
@@ -119,6 +137,7 @@ template <std::floating_point num> class packet {
       auto end()         { return packets.begin() + limit; }
 
     private:
+
       num unique_id( const std::string& str ){
 
         std::fill(id_vec.begin(), id_vec.end(), (num)0);
@@ -130,23 +149,6 @@ template <std::floating_point num> class packet {
 
         return negative + positive; 
 
-      }
-      
-      void encode( const std::string& inp ){
-
-        num uid = unique_id(inp); std::size_t i{0};
-
-        while( i < inp.size() - 1 && i < packets.size() - 1 ){
-
-          packets[i].first  = vocab[ inp[i] ];
-          packets[i].second = uid;
-        
-          ++i;
-        }
-
-        target  = vocab[ inp[i] ];
-        limit   = i;
-        current = 0; 
       }
 
       std::ifstream ifs; 

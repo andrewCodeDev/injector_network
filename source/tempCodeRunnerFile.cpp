@@ -1,0 +1,1 @@
+    inj_net.forward(p_enc1);

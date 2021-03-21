@@ -57,12 +57,12 @@ namespace logit {
 
     // error functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      void calibrate( num lr = 0.1 ){
+      void calibrate( num lr = 0.01 ){
         for( size_t i{0}; i < sensors.size(); ++i ){
           
-          weights[i] -= error * avg_rcp * sensors[i] * lr;
+          // weights[i] -= error * avg_rcp * sensors[i] * lr;
           
-          bias[i]    -= error * avg_rcp * lr;
+          // bias[i]    -= error * avg_rcp * lr;
 
           sensors[i].calibrate(error * weights[i] * avg_rcp, lr); 
         }

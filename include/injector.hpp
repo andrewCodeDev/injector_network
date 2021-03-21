@@ -23,31 +23,35 @@ namespace injector {
         for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
       };
 
-      template<class container>
-      void forward( const container& inp ){
-        
-        for( logit_ref l_pos : logits ){
-          for( size_t i{0}; i < logits.size(); ++i ){ l_pos.take(i, inp[i]); }
-        }
-        activation::softmax_diff<num>(logits);
+    template<class container>
+    void forward( const container& packets ){
+      
+      for( auto& packet : packets ){
+        for( auto& l_pos : logits ){ l_pos.take(packet.first, packet.second); }
       }
 
-      template<class container_a, class container_b>
-      void calibrate( const container_a& inp, const container_b& trg ){
-        
-        for( size_t i{0}; i < logits.size(); ++i ){
-          logits[i].mul_error( logits[i].view() - trg[i] );
-        }
+      activation::min_max<num>(scaled, logits);
+      activation::softmax_scaled<num>(scaled);
+    }
 
-        for( logit_ref l_pos : logits ){ l_pos.calibrate(); }
+    void calibrate( const size_t& trg ){
+
+        logits[trg].mul_error( scaled[trg] - (num)1 );
+        logits[trg].calibrate();
+
+        for( auto& l_pos : logits ){ l_pos.full_reset(); }
+    }
+
+      void reset_logits(){
+        for( auto& l_pos : logits ){ l_pos.full_reset(); }
       }
 
       void display_output(){
-        for( const auto& l_pos : logits ){
-          std::cout << l_pos.view() << ' ';
+        for( const auto& s : scaled ){
+          std::cout << s << ' ';
         } std::cout << '\n';
       }
-
+      
       void display_formulas(){
         for( clogit_ref l_pos : logits ){
         for( size_t i{0}; i < logits.size(); ++i ){
@@ -58,11 +62,15 @@ namespace injector {
 
       size_t size() const { return logits.size(); }
 
+      auto output() const { return scaled; }  
+      auto output()       { return scaled; }  
+
       auto operator[]( const size_t& i ) const { return logits[i]; }
       auto operator[]( const size_t& i )       { return logits[i]; }
 
     private:
       std::array<logit::immediate<num>, out_size> logits;
+      std::array<num, out_size> scaled{0};
   };
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,13 +89,13 @@ namespace injector {
       for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
     };
 
-    std::array<logit::sequential<num>, out_size>& output() const { return logits; }
-    std::array<logit::sequential<num>, out_size>& output()       { return logits; }
+    auto output() const { return scaled; }
+    auto output()       { return scaled; }
 
     size_t size() const { return logits.size(); }
 
-    clogit_ref operator[]( const size_t& i ) const { return logits[i]; }
-     logit_ref operator[]( const size_t& i )       { return logits[i]; }
+    clogit_ref operator[]( const size_t& i ) const { return scaled[i]; }
+     logit_ref operator[]( const size_t& i )       { return scaled[i]; }
 
     void reset_logits(){
       for( auto& l_pos : logits ){ l_pos.full_reset(); }
@@ -99,22 +107,22 @@ namespace injector {
       for( auto& packet : packets ){
         for( auto& l_pos : logits ){ l_pos.take(packet.first, packet.second); }
       }
-      activation::softmax<num>(logits);
+
+      activation::min_max<num>(scaled, logits);
+      activation::softmax_scaled<num>(scaled);
     }
 
     void calibrate( const size_t& trg ){
 
-    // for( size_t i{0}; i < logits.size(); ++i ){
-        logits[trg].mul_error( -(num)1 / logits[trg].view() );
-        // logits[i].mul_error( logits[i]() - (num)(i == trg) );
+        logits[trg].mul_error( scaled[trg] - (num)1 );
         logits[trg].calibrate();
 
         for( auto& l_pos : logits ){ l_pos.full_reset(); }
     }
 
     void display_output(){
-      for( clogit_ref l_pos : logits ){
-        std::cout << l_pos.view() << ' ';
+      for( const auto& s : scaled ){
+        std::cout << s << ' ';
       } std::cout << '\n';
     }
 
@@ -129,6 +137,7 @@ namespace injector {
   private:
 
     std::array<logit::sequential<num>, out_size> logits;
+    std::array<num, out_size> scaled{0};
 
   };
 
