@@ -7,6 +7,7 @@
 #include <random>
 #include <map>
 
+#include <iomanip>
 
 namespace encoder {
 
@@ -50,6 +51,22 @@ template <std::floating_point num> class packet {
       using packet_vec  = std::vector<std::pair<std::size_t, num>>;
       using sparse_vec  = std::vector<num>;
 
+      packet( std::size_t example_size, std::string filepath ){
+     
+        vocab[' '] = 0;
+        for(const auto& c : numeric )       { vocab[c] = 0; }
+        for(const auto& c : punctuation )   { vocab[c] = 0; }
+        for(const auto& c : lower_alphabet ){ vocab[c] = 0; }
+        for(const auto& c : upper_alphabet ){ vocab[c] = 0; }
+
+        for( auto& p : vocab ){ p.second = cols++; }
+
+        packets.resize(example_size);
+        id_vec.resize(cols);
+
+        open_file(filepath);
+      }
+
       packet( std::size_t example_size ){
         vocab[' '] = 0;
         for(const auto& c : numeric )       { vocab[c] = 0; }
@@ -61,6 +78,7 @@ template <std::floating_point num> class packet {
 
         packets.resize(example_size);
         id_vec.resize(cols);
+
       }
 
       const std::pair<std::size_t, num>& cycle_inp() { 
@@ -77,19 +95,17 @@ template <std::floating_point num> class packet {
 
       inline static const size_t out_size { 2 * case_size + nums_size + punc_size + 1 };
       
-      std::size_t get_trg() const { return target; }
+      std::size_t get_trg() const { return packets[limit - 1].first; }
       
-      num enc_trg() const { return nrm_uid[ target ]; }
-
       void display_inp()   const {
         std::cout << "| Input Characers | {'";
-        for( std::size_t i{0}; i < limit; ++i) {
+        for( std::size_t i{0}; i < limit - 1; ++i) {
           std::cout << '(' << idx_to_char(packets[i].first) << ", " << packets[i].second << ") ";
         } std::cout << "\b}\n\n";
       }
 
       void display_trg()   const {
-        std::cout << "| Target | {"<< target << ", '" << idx_to_char(target) << "'}\n\n";
+        std::cout << "| Target | {'" << idx_to_char(get_trg()) << "', " << get_trg()  << "}\n\n";
       }
 
       void display_vocab() const {
@@ -103,45 +119,52 @@ template <std::floating_point num> class packet {
 
       void open_file( const std::string& filepath ){
         
-        unique_id(filepath);
+        nomralize_characters(filepath);
         ifs.open(filepath);
 
       }
             
       void encode( const std::string& inp ){
 
-        unique_id(inp);
-
         std::size_t i{0};
 
-        while( i < inp.size() - 1 && i < packets.size() - 1 ){
+        num num_words = std::count(inp.begin() + 1, inp.end() - 1, ' ');
 
-          packets[i].first  = vocab[ inp[i] ];
-          packets[i].second = nrm_uid[ vocab[inp[i]] ];
-        
-          ++i;
-        }
+        std::string::const_iterator ancr = inp.begin();
+        std::string::const_iterator incr = inp.begin();
 
-        target  = vocab[ inp[i] ];
+        do{
+
+          incr = std::find(incr, inp.end(), ' ');
+
+          size_t dist = std::distance(ancr, incr);
+
+          while( i < std::distance(inp.begin(), incr) && i < inp.size() && i < packets.size() ){
+         
+            packets[i].first  = vocab[ inp[i] ];
+            packets[i].second = nrm_uid[ vocab[inp[i]] ] * (num)dist / num_words;
+
+            ++i;
+          }
+          
+          ancr = incr++;
+          
+        }while( 0 < std::distance(incr, inp.end()) );
+
         limit   = i;
         current = 0; 
+
       }
 
-      bool next_input(){
 
-        if( std::getline(ifs, inp_str) ){
+      packet& next_input(){
 
-          encode(inp_str);
-
-          return true;
-        }
-
-        else {
-
-          return false;
-
-        }
+        if( std::getline(ifs, inp_str) ){ encode(inp_str); }
+        
+        return *this;
       }
+
+      operator bool() { return ifs.good(); }
 
       auto operator[]( const std::size_t i ) const { return packets[i]; }
       auto operator[]( const std::size_t i )       { return packets[i]; }
@@ -153,7 +176,7 @@ template <std::floating_point num> class packet {
 
     private:
 
-      void unique_id( std::string str ){
+      void nomralize_characters( std::string str ){
 
         std::ifstream uid_fs; uid_fs.open(str);
         
@@ -176,7 +199,7 @@ template <std::floating_point num> class packet {
       encodings   vocab;
       sparse_vec  id_vec;
       packet_vec  packets;
-      std::size_t current{0}, limit{0}, cols{0}, target{0};
+      std::size_t current{0}, limit{0}, cols{0};
 
       std::array<num, out_size> nrm_uid{0};
   };

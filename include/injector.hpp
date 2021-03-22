@@ -197,29 +197,25 @@ namespace injector {
       void forward( const container& packets ){
         
 
-        size_t i{1};
+        size_t i{1}, past, current;
       
         logits[ 0 ][ packets[0].first ].take(0, packets[0].second);
 
 
-        std::cout << packets[0].first << '\n';
-        print_grid(logits);
-
-      // store first input position
-        last = packets[0].first;
+        // std::cout << packets[0].first << '\n';
+        // print_grid(logits);
 
       // one logit layer or one packet is required for the output states
         while( i < layers - 1 && i < packets.current_size() - 1 ){
 
-          current = packets[i].first;
+          past    = packets[i - 1].first;
+          current = packets[  i  ].first;
         
-        // // add last state to the current position use send() to set logit to true
-          logits[i][ current ].take(last, packets[i].second + logits[i - 1][ last ].send());
+        // add past stimuli to future logit position
+          logits[i][ current ].take(past, logits[i - 1][ past ].view());
 
-          std::cout << packets[i].first << '\n';
-          print_grid(logits);
-
-          last = current;
+          // std::cout << packets[i].first << '\n';
+          // print_grid(logits);
 
           ++i;
         }
@@ -227,59 +223,74 @@ namespace injector {
       // required for calibration
         output_idx = i;
 
-      // create all output states from final packet or relative logit layer
-
+      // create all output states - current is now i - 1 after last ++i
         for( auto& l_pos : logits[i] ){
-          l_pos.take(last, packets[i].second + logits[i - 1][ last ].send());
+          l_pos.take(current, logits[i - 1][ current ].view());
         }
 
-        std::cout << packets[i].first << '\n';
-        print_grid(logits);
+        // std::cout << packets[i].first << '\n';
+        // print_grid(logits);
 
-      // scale and activate]      
+      // scale and activate
 
         activation::min_max<num>(scaled, logits[i]);
         activation::softmax_scaled<num>(scaled);
 
-        for( const auto& x : scaled ){
-          std::cout << std::setprecision(3) << std::ceil(std::abs(x)) << ' ';
-        } std::cout << std::endl;
+        // for( const auto& x : scaled ){
+        //   std::cout << std::setprecision(3) << std::ceil(std::abs(x)) << ' ';
+        // } std::cout << std::endl;
 
       }
 
       template<class container>
       void calibrate( const container& packets ){
+        
+        // logits[ output_idx ][ packets.get_trg() ].mul_error( scaled[ packets.get_trg() ] - 1.0 );
 
-        logits[ output_idx ][ packets.get_trg() ].mul_error( scaled[ packets.get_trg() ] - (num)1 );
 
-        size_t i{ output_idx };
+          // std::cout << packets[output_idx].first << '\n';
+          // print_grid(logits);
+
+        for( size_t i{0}; i < out_size; ++i ){
+
+          logits[ output_idx ][i].mul_error( scaled[i] - (num)(packets.get_trg() == i) );
+
+          if( packets.get_trg() != i ){
+            logits[ output_idx ][i].calibrate( packets[ output_idx - 1 ].first );
+          }
+
+        }
+
+
+          // std::cout << packets[output_idx].first << '\n';
+          // print_grid(logits);
+
+        size_t i{ output_idx }, past, current;
     
-
         while( 0 < i ){
-          
-          last    = packets[  i  ].first;
-          current = packets[i - 1].first;
+          past    = packets[i - 1].first;
+          current = packets[  i  ].first;
 
         // take derivative with respect to the future logit
-          logits[i - 1][ current ].mul_error( logits[i][ last ].dy_dx(current, packets[i - 1].second + logits[i - 1][ current ].view()) );
+          logits[i - 1][ past ].mul_error( logits[i][ current ].dy_dx(past, logits[i - 1][ past ].view()) );
 
-          logits[i][ last ].calibrate();
+          logits[i][ current ].calibrate(past);
 
-          std::cout << packets[i].first << '\n';
-          print_grid(logits);
+          // std::cout << packets[i].first << '\n';
+          // print_grid(logits);
 
           --i;
         }
 
-        logits[0][ current ].calibrate();
+        logits[0][ packets[0].first ].calibrate(0);
 
-        std::cout << packets[0].first << '\n';
-        print_grid(logits);         
+        // std::cout << packets[0].first << '\n';
+        // print_grid(logits);         
 
-        for( auto& l_pos : logits[output_idx] ){ l_pos.full_reset(); }
+        // for( auto& l_pos : logits[output_idx] ){ l_pos.full_reset(); }
 
-        std::cout << packets[0].first << '\n';
-        print_grid(logits);         
+        // std::cout << packets[0].first << '\n';
+        // print_grid(logits);         
       }
 
       void display_output(){
@@ -287,6 +298,12 @@ namespace injector {
           std::cout << s << ' ';
         } std::cout << '\n';
       }
+      
+      // void display_output(){
+      //   for( const auto& s : logits.back() ){
+      //     std::cout << s.view() << ' ';
+      //   } std::cout << '\n';
+      // }
       
       void reset_logits(){
         for( auto& vec : logits ){
@@ -303,7 +320,7 @@ namespace injector {
       auto operator[]( const size_t& i )       { return logits[i]; }
 
     private:
-      size_t last{0}, current{0}, output_idx{0};
+      size_t future{0}, current{0}, output_idx{0};
       std::array<num, out_size> scaled{0};
       std::array<std::vector<logit::immediate<num>>, layers> logits;
   };

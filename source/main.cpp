@@ -72,60 +72,54 @@ srand(time(0));
   
 
 
-  encoder::packet<float> p_enc1(29);
-  // encoder::packet<float> p_enc2(29);
-  // encoder::packet<float> p_enc3(29);
+  encoder::packet<double> p_enc1(15, "/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
+  encoder::packet<double> p_enc2(15, "/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
+  encoder::packet<double> p_enc3(15, "/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
 
-  p_enc1.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
-  // p_enc2.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
-  // p_enc3.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
 
   sampler::indexical idx_sampler(p_enc1.out_size, 5);
 
   // network ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  injector::graph<float, 10, p_enc1.out_size> inj_net(p_enc1.out_size, 3);
+  injector::graph<double, 15, p_enc1.out_size> inj_net(p_enc1.out_size, 3);
 
-  // p_enc1.next_input();
+  p_enc1.next_input();
+  p_enc2.next_input().next_input();
+  p_enc3.next_input().next_input().next_input();
 
-  p_enc1.encode("ShortQs");
+  // std::cout << p_enc1.current_size() << "\n\n";
+  // std::cout << inj_net.size() << "\n\n";
 
-  // std::cout << p_enc1.current_size() << '\n';
+  p_enc1.display_inp();
+  p_enc1.display_trg();
 
-  for( auto& x : p_enc1 ) { std::cout << x.first << ' '; }
+  for( std::size_t epoch{0}; epoch < 2'000; ++epoch ){
 
-  std::cout << "\n\n";
- 
+    inj_net.forward(p_enc1);
+    if(epoch % 100 == 0){ inj_net.display_output(); std::cout << '\n'; }
+    inj_net.calibrate(p_enc1);
+
+    inj_net.forward(p_enc2);
+    inj_net.calibrate(p_enc2);
+
+    inj_net.forward(p_enc3);
+    inj_net.calibrate(p_enc3);
+  }
+
+  inj_net.reset_logits();
+
   inj_net.forward(p_enc1);
-  inj_net.calibrate(p_enc1);
+  std::cout << p_enc1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
 
-  // for( std::size_t epoch{0}; epoch < 1; ++epoch ){
+  inj_net.reset_logits();
 
-    // if(epoch % 50 == 0){ inj_net.display_output(); std::cout << '\n'; }
-    // inj_net.calibrate(p_enc1);
+  inj_net.forward(p_enc2);
+  std::cout << p_enc1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
 
-    // inj_net.forward(p_enc2);
-    // inj_net.calibrate(p_enc2);
+  inj_net.reset_logits();  
 
-    // inj_net.forward(p_enc3);
-    // inj_net.calibrate(p_enc3);
-    
-  // }
-
-  // inj_net.reset_logits();
-
-  // inj_net.forward(p_enc1);
-  // std::cout << p_enc1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
-
-  // inj_net.reset_logits();
-
-  // inj_net.forward(p_enc2);
-  // std::cout << p_enc1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
-
-  // inj_net.reset_logits();  
-
-  // inj_net.forward(p_enc3);
-  // std::cout << p_enc1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
+  inj_net.forward(p_enc3);
+  std::cout << p_enc1.idx_to_char( idx_sampler.sample_top(inj_net.output()) );
   
  
   std::cout << '\n';

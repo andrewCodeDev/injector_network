@@ -74,11 +74,11 @@ namespace sensor {
         // assert( 0 < n_drv && n_drv < 3 );
 
         // if( n_drv == 1 ) {
-          return std::transform_reduce(this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
+          return std::transform_reduce(std::execution::seq, this->data.cbegin(), this->data.cend(), (num)0, std::plus<num>{},
             [&x](const auto& m) 
             { 
               num exp_m = std::exp(m.rate * (x - m.cntr));
-              return -(m.coef * m.rate * exp_m) / (((num)1 + exp_m) * ((num)1  + exp_m));
+              return -(m.coef * m.rate * exp_m) / ((1.0 + exp_m) * (1.0  + exp_m));
             });
         // }
         
@@ -137,18 +137,16 @@ namespace sensor {
 
       void calibrate(const num& error, num lr = 0.01 ){
 
-        this->reset_base();
-
         for( auto& m : this->data ) {
-          m.rate -= (m.rate_upd * error * lr);
-          m.cntr -= (m.cntr_upd * error * lr);
-          m.coef -= (m.coef_upd * error * lr);
+          m.rate -= (m.rate_upd / 1e-8) * error * lr;
+          m.coef -= (m.coef_upd / 1e-8) * error * lr;
+          m.cntr -= (m.cntr_upd / 1e-8) * error * lr;
 
+          m.coef_upd = 0;
           m.rate_upd = 0;
           m.cntr_upd = 0;
-          m.coef_upd = 0;
         }
-
+          this->reset_base();
       }
 
       void reset(){
@@ -165,24 +163,30 @@ namespace sensor {
       num operator()( const num& x ){
 
         this->state = true;
-       
-        // memoize function calls;
-        num exp_m, div_m;
+
+        num tmp;
 
         for( auto& m : this->data ){
 
-          exp_m = std::exp(m.rate * (x - m.cntr)); 
-          div_m = ((num)1 + exp_m) * ((num)1 + exp_m);
+          tmp = f(x, m.coef, m.rate, m.cntr);
 
-          this->signal += m.coef / ((num)1 + exp_m);
-
-          m.rate_upd += ((-m.coef * (x - m.cntr) * exp_m ) / div_m );
-          m.cntr_upd += (( m.coef * m.rate * exp_m ) / div_m );
-          m.coef_upd += ((num)1 / ((num)1 + exp_m));
+          m.coef_upd += f(x, m.coef + 1e-8, m.rate, m.cntr) - tmp;
+          m.rate_upd += f(x, m.coef, m.rate + 1e-8, m.cntr) - tmp;
+          m.cntr_upd += f(x, m.coef, m.rate, m.cntr + 1e-8) - tmp;
+          
+          this->signal += tmp;
         }
 
         return this->signal;
       }
+
+    private:
+
+      num f(const num& x, const num& coef, const num& rate, const num& cntr)
+      {
+        return coef / (1.0 + std::exp(rate * (x - cntr)));
+      }
+
 
   };
 
@@ -196,8 +200,6 @@ namespace sensor {
       sequential(const size_t& size) : sensor_base<num, seq_term_values<num>>(size){ };
 
       void calibrate(const num& error, num lr = 0.01 ){
-        
-        this->reset_base();
 
         for( auto& m : this->data ) {
           m.rate -= (m.rate_upd * error * lr);
@@ -214,7 +216,7 @@ namespace sensor {
 
           m.dx_mem   = 0;
         }
-
+         this->reset_base();
       }
 
       void reset(){
@@ -242,15 +244,15 @@ namespace sensor {
 
           num tmp = f(x + m.dx_mem, m.coef, m.rate, m.cntr);
 
-          m.coef_upd += (f(x + m.coef_dyn, m.coef + (num)1e-3, m.rate, m.cntr) - tmp) / (num)1e-3;
-          m.rate_upd += (f(x + m.rate_dyn, m.coef, m.rate + (num)1e-3, m.cntr) - tmp) / (num)1e-3;
-          m.cntr_upd += (f(x + m.cntr_dyn, m.coef, m.rate, m.cntr + (num)1e-3) - tmp) / (num)1e-3;
+          m.coef_upd += (f(x + m.coef_dyn, m.coef + 1e-8, m.rate, m.cntr) - tmp) / 1e-8;
+          m.rate_upd += (f(x + m.rate_dyn, m.coef, m.rate + 1e-8, m.cntr) - tmp) / 1e-8;
+          m.cntr_upd += (f(x + m.cntr_dyn, m.coef, m.rate, m.cntr + 1e-8) - tmp) / 1e-8;
 
           m.dx_mem = g(x + m.dx_mem, m.coef, m.rate, m.cntr);
 
-          m.coef_dyn = g(x + m.coef_dyn, m.coef + (num)1e-3, m.rate, m.cntr);
-          m.rate_dyn = g(x + m.rate_dyn, m.coef, m.rate + (num)1e-3, m.cntr);
-          m.cntr_dyn = g(x + m.cntr_dyn, m.coef, m.rate, m.cntr + (num)1e-3);
+          m.coef_dyn = g(x + m.coef_dyn, m.coef + 1e-8, m.rate, m.cntr);
+          m.rate_dyn = g(x + m.rate_dyn, m.coef, m.rate + 1e-8, m.cntr);
+          m.cntr_dyn = g(x + m.cntr_dyn, m.coef, m.rate, m.cntr + 1e-8);
 
           this->signal += tmp;
         }
@@ -260,13 +262,13 @@ namespace sensor {
     private:
       num f(const num& x, const num& coef, const num& rate, const num& cntr)
       {
-        return coef / (static_cast<num>(1) + std::exp(rate * (x - cntr)));
+        return coef / (1.0 + std::exp(rate * (x - cntr)));
       }
 
       num g(const num& x, const num& coef, const num& rate, const num& cntr)
       {
         num exp_m = std::exp(rate * (x - cntr));
-        return -(coef * rate * exp_m) / (((num)1 + exp_m) * ((num)1  + exp_m));
+        return -(coef * rate * exp_m) / ((1.0 + exp_m) * (1.0  + exp_m));
       } 
   };
 

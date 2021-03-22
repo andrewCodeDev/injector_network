@@ -57,16 +57,12 @@ namespace logit {
 
     // error functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      void calibrate( num lr = 0.01 ){
-        
-        for( size_t i{0}; i < sensors.size(); ++i ){
-          
-          if( sensors[i] ){          
-            weights[i] -= error * avg_rcp * sensors[i] * lr;
-            bias[i]    -= error * avg_rcp * lr;
-            sensors[i].calibrate(error * weights[i] * avg_rcp, lr); 
-          }
-        }
+      void calibrate( const size_t& i, num lr = 0.01 ){
+
+          weights[i] -= error * avg_rcp * sensors[i] * lr;
+          bias[i]    -= error * avg_rcp * lr;
+          sensors[i].calibrate(error * weights[i] * avg_rcp, lr); 
+
           this->logit_reset();
       }
 
@@ -74,7 +70,7 @@ namespace logit {
 
       num view_error(){ return error; }
 
-      num dy_dx( const size_t& i, const num& x ) { return error * sensors[i].dy_dx(x) * weights[i]; }
+      num dy_dx( const size_t& i, const num& x ) { return avg_rcp * error * sensors[i].dy_dx(x) * weights[i]; }
 
     // reset functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
