@@ -10,6 +10,18 @@
 
 namespace encoder {
 
+
+  template <std::floating_point num> void normalize_uid(auto& arr){
+
+    num min_id = (*std::min_element(arr.cbegin(), arr.cend()));
+    num max_id = (*std::max_element(arr.cbegin(), arr.cend()));
+    num rcp    = static_cast<num>(1) / (max_id - min_id + (num)1e-8);
+
+    for( size_t i{0}; i < arr.size(); ++i ) {
+      arr[i] = (num)1 - (arr[i] - min_id) * rcp;
+    }
+  }
+
   static const std::string numeric{"0123456789"};
   static const std::string punctuation{"().,!?;:-"};
   static const std::string upper_alphabet{"ABCDEFGHIJKLMNOPQRSTUVWXYZ"};
@@ -63,13 +75,11 @@ template <std::floating_point num> class packet {
 
       std::size_t current_size() const { return limit; }
 
-      constexpr std::size_t out_size(){ return 2 * case_size + nums_size + punc_size + 1; }
-
-      const std::vector<num>& operator[]( const std::size_t i ) const { return packets[i]; }
-            std::vector<num>& operator[]( const std::size_t i )       { return packets[i]; }
-
+      inline static const size_t out_size { 2 * case_size + nums_size + punc_size + 1 };
       
-      std::size_t get_trg() { return target; }
+      std::size_t get_trg() const { return target; }
+      
+      num enc_trg() const { return nrm_uid[ target ]; }
 
       void display_inp()   const {
         std::cout << "| Input Characers | {'";
@@ -93,19 +103,21 @@ template <std::floating_point num> class packet {
 
       void open_file( const std::string& filepath ){
         
+        unique_id(filepath);
         ifs.open(filepath);
 
       }
             
       void encode( const std::string& inp ){
 
-        // num uid = unique_id(inp);
-         std::size_t i{0};
+        unique_id(inp);
+
+        std::size_t i{0};
 
         while( i < inp.size() - 1 && i < packets.size() - 1 ){
 
           packets[i].first  = vocab[ inp[i] ];
-          packets[i].second = 1;
+          packets[i].second = nrm_uid[ vocab[inp[i]] ];
         
           ++i;
         }
@@ -131,6 +143,9 @@ template <std::floating_point num> class packet {
         }
       }
 
+      auto operator[]( const std::size_t i ) const { return packets[i]; }
+      auto operator[]( const std::size_t i )       { return packets[i]; }
+      
       auto begin() const { return packets.begin(); }
       auto begin()       { return packets.begin(); }
       auto end()   const { return packets.begin() + limit; }
@@ -138,17 +153,21 @@ template <std::floating_point num> class packet {
 
     private:
 
-      num unique_id( const std::string& str ){
+      void unique_id( std::string str ){
 
-        std::fill(id_vec.begin(), id_vec.end(), (num)0);
+        std::ifstream uid_fs; uid_fs.open(str);
+        
+        for( size_t i{0}; i < 10'000 && uid_fs; ++i ){
+          
+          std::getline(uid_fs, str);
+          
+          for( auto& c : str ) { nrm_uid[ vocab[c] ] += 1; }
 
-        for(const auto& c : str){ id_vec[ vocab[c] ] += (num)1; }
+        }
 
-        num negative = -std::accumulate(id_vec.rbegin(), id_vec.rend(), (num)0, [incr = (num)1](const auto& x, const auto& y) mutable { return x + (y / incr++); });
-        num positive =  std::accumulate(id_vec.cbegin(), id_vec.cend(), (num)0, [incr = (num)1](const auto& x, const auto& y) mutable { return x + (y / incr++); });
+        normalize_uid<num>(nrm_uid);
 
-        return negative + positive; 
-
+        // for( auto& c : nrm_uid ) { std::cout << c << ' '; }
       }
 
       std::ifstream ifs; 
@@ -158,6 +177,8 @@ template <std::floating_point num> class packet {
       sparse_vec  id_vec;
       packet_vec  packets;
       std::size_t current{0}, limit{0}, cols{0}, target{0};
+
+      std::array<num, out_size> nrm_uid{0};
   };
 
 

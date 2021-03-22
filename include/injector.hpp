@@ -1,14 +1,38 @@
 #ifndef INJECTOR_H
 #define INJECTOR_H
 
+#include <iomanip>
 #include "logits.hpp"
 
 namespace injector {
 
-  template <std::floating_point num, size_t out_size, class logit_t> class shallow;
+  // template <std::floating_point num, size_t out_size, class logit_t> class shallow;
 
 // shallow injector networks ~~~~~~~~~~~~~~~
 
+  template <class T>
+  void print_grid(const T& logits){
+    
+    for( const auto& vec : logits ){
+
+      for( size_t i{0}; i < vec.size(); ++i ){
+
+        if( 0.0f < std::ceil(std::abs(vec[i].view())) && (&vec != &logits.back())){
+          std::cout << std::setprecision(3) << '(' << i << ',' << std::ceil(std::abs(vec[i].view())) << ") ";
+        }
+
+        else {
+          std::cout << std::setprecision(3) << std::ceil(std::abs(vec[i].view())) << ' ';
+        }
+
+      }
+      std::cout << std::endl;
+    } std::puts("\n");
+  }
+
+
+
+/*
   template <
 
     std::floating_point num, size_t out_size
@@ -103,19 +127,22 @@ namespace injector {
 
     template<class container>
     void forward( const container& packets ){
-      
+
+      num dx_tmp = 0;
+
       for( auto& packet : packets ){
         for( auto& l_pos : logits ){ l_pos.take(packet.first, packet.second); }
       }
-
-      activation::min_max<num>(scaled, logits);
-      activation::softmax_scaled<num>(scaled);
+        activation::min_max<num>(scaled, logits);
+        activation::softmax_scaled<num>(scaled);
     }
 
-    void calibrate( const size_t& trg ){
+    template<class container>
+    void calibrate( const container& packets ){
 
-        logits[trg].mul_error( scaled[trg] - (num)1 );
-        logits[trg].calibrate();
+        logits[packets.get_trg()].mul_error( scaled[packets.get_trg()] - (num)1 );
+        
+        logits[packets.get_trg()].calibrate( packets.enc_trg() * 0.1 );
 
         for( auto& l_pos : logits ){ l_pos.full_reset(); }
     }
@@ -141,79 +168,147 @@ namespace injector {
 
   };
 
-/*
+*/
 
-  template <
-    std::floating_point num,
-    size_t         out_size
-  > class shallow< num, out_size, logit::dyn >{
+  template <std::floating_point num, size_t layers, size_t out_size> class graph {
 
-  private:
+    public:
+      using  logit_ref =       logit::immediate<num>&;
+      using clogit_ref = const logit::immediate<num>&;
 
-    std::array<logit::dynamic<num>, out_size> logits;
+      graph( const size_t& inp_size, const size_t& n_terms ){
 
-  public:
-
-    using clogit_ref = const logit::dynamic<num>&;
-    using  logit_ref =       logit::dynamic<num>&;
-
-    shallow( const size_t& inp_size, const size_t& n_terms ){
-      for( logit_ref l_pos : logits ) { l_pos.initialize(inp_size, n_terms); }
-    };
-
-    std::array<logit::dynamic<num>, out_size>& output() const { return logits; }
-    std::array<logit::dynamic<num>, out_size>& output()       { return logits; }
-
-    size_t size() const { return logits.size(); }
-
-    clogit_ref operator[]( const size_t& i ) const { return logits[i]; }
-     logit_ref operator[]( const size_t& i )       { return logits[i]; }
-
-    void reset_logits(){
-      for( auto& l_pos : logits ){ l_pos.full_reset(); }
-    }
-
-    template<class container>
-    void forward( const container& inp ){
-      
-      for( auto& r_inp : inp    )
-      for( auto& l_pos : logits )
-      for( size_t i{0}; i < r_inp.size(); ++i ){
+      // input sensors only have one connection
         
-        // std::cout << r_inp[i] << ' ';
-        l_pos(i, r_inp[i]); 
+        logits[0].resize(inp_size);
+        for( auto& l_pos : logits[0] ){ l_pos.initialize(1, n_terms); }
+        
+      // all preceeding layers are fully connected
+        for( size_t i{1}; i < layers; ++i ){
+          
+          logits[i].resize(inp_size);
+          
+          for( auto& l_pos : logits[i] ){ l_pos.initialize(inp_size, n_terms); }
+        }
+
+      }
+
+      template<class container>
+      void forward( const container& packets ){
+        
+
+        size_t i{1};
+      
+        logits[ 0 ][ packets[0].first ].take(0, packets[0].second);
+
+
+        std::cout << packets[0].first << '\n';
+        print_grid(logits);
+
+      // store first input position
+        last = packets[0].first;
+
+      // one logit layer or one packet is required for the output states
+        while( i < layers - 1 && i < packets.current_size() - 1 ){
+
+          current = packets[i].first;
+        
+        // // add last state to the current position use send() to set logit to true
+          logits[i][ current ].take(last, packets[i].second + logits[i - 1][ last ].send());
+
+          std::cout << packets[i].first << '\n';
+          print_grid(logits);
+
+          last = current;
+
+          ++i;
+        }
+
+      // required for calibration
+        output_idx = i;
+
+      // create all output states from final packet or relative logit layer
+
+        for( auto& l_pos : logits[i] ){
+          l_pos.take(last, packets[i].second + logits[i - 1][ last ].send());
+        }
+
+        std::cout << packets[i].first << '\n';
+        print_grid(logits);
+
+      // scale and activate]      
+
+        activation::min_max<num>(scaled, logits[i]);
+        activation::softmax_scaled<num>(scaled);
+
+        for( const auto& x : scaled ){
+          std::cout << std::setprecision(3) << std::ceil(std::abs(x)) << ' ';
+        } std::cout << std::endl;
+
+      }
+
+      template<class container>
+      void calibrate( const container& packets ){
+
+        logits[ output_idx ][ packets.get_trg() ].mul_error( scaled[ packets.get_trg() ] - (num)1 );
+
+        size_t i{ output_idx };
+    
+
+        while( 0 < i ){
+          
+          last    = packets[  i  ].first;
+          current = packets[i - 1].first;
+
+        // take derivative with respect to the future logit
+          logits[i - 1][ current ].mul_error( logits[i][ last ].dy_dx(current, packets[i - 1].second + logits[i - 1][ current ].view()) );
+
+          logits[i][ last ].calibrate();
+
+          std::cout << packets[i].first << '\n';
+          print_grid(logits);
+
+          --i;
+        }
+
+        logits[0][ current ].calibrate();
+
+        std::cout << packets[0].first << '\n';
+        print_grid(logits);         
+
+        for( auto& l_pos : logits[output_idx] ){ l_pos.full_reset(); }
+
+        std::cout << packets[0].first << '\n';
+        print_grid(logits);         
+      }
+
+      void display_output(){
+        for( const auto& s : scaled ){
+          std::cout << s << ' ';
+        } std::cout << '\n';
       }
       
-      // display_output();
-      activation::softmax<num>(logits);
-    }
-
-    template<class container>
-    void calibrate( const container& trg ){
-      for( size_t i{0}; i < logits.size(); ++i ){
-        logits[i].mul_error(( -trg[i] / logits[i]() ) / (num)trg.size() );
-        // logits[i].mul_error( logits[i]() - trg[i] );
-        logits[i].calibrate();
+      void reset_logits(){
+        for( auto& vec : logits ){
+          for( auto& l_pos : vec ){ l_pos.full_reset(); }
+        }
       }
-    }
 
-    void display_output(){
-      for( clogit_ref l_pos : logits ){
-        std::cout << l_pos() << ' ';
-      } std::cout << '\n';
-    }
+      size_t size() const { return logits.size(); }
 
-    void display_formulas(){
-      for( clogit_ref l_pos : logits ){
-      for( size_t i{0}; i < logits.size(); ++i ){
-        standard_form(l_pos[i]);
-      } std::cout << '\n';
-      } std::cout << '\n';
-    }
+      auto output() const { return scaled; }  
+      auto output()       { return scaled; }  
 
+      auto operator[]( const size_t& i ) const { return logits[i]; }
+      auto operator[]( const size_t& i )       { return logits[i]; }
+
+    private:
+      size_t last{0}, current{0}, output_idx{0};
+      std::array<num, out_size> scaled{0};
+      std::array<std::vector<logit::immediate<num>>, layers> logits;
   };
 
-*/
+// */
 
   // template <
   //   std::floating_point num,

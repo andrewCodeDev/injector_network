@@ -58,20 +58,23 @@ namespace logit {
     // error functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       void calibrate( num lr = 0.01 ){
+        
         for( size_t i{0}; i < sensors.size(); ++i ){
           
-          // weights[i] -= error * avg_rcp * sensors[i] * lr;
-          
-          // bias[i]    -= error * avg_rcp * lr;
-
-          sensors[i].calibrate(error * weights[i] * avg_rcp, lr); 
+          if( sensors[i] ){          
+            weights[i] -= error * avg_rcp * sensors[i] * lr;
+            bias[i]    -= error * avg_rcp * lr;
+            sensors[i].calibrate(error * weights[i] * avg_rcp, lr); 
+          }
         }
-        this->logit_reset();
+          this->logit_reset();
       }
 
       void mul_error( const num& dx ){ error *= dx; }
 
       num view_error(){ return error; }
+
+      num dy_dx( const size_t& i, const num& x ) { return error * sensors[i].dy_dx(x) * weights[i]; }
 
     // reset functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

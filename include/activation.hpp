@@ -50,12 +50,13 @@ namespace activation {
 
     num min_stm = (*std::min_element(logits.cbegin(), logits.cend())).view();
     num max_stm = (*std::max_element(logits.cbegin(), logits.cend())).view();
-    num rcp     = static_cast<num>(1) / (max_stm - min_stm);
+    num rcp     = static_cast<num>(1) / (max_stm - min_stm + (num)1e-8);
 
     for( size_t i{0}; i < logits.size(); ++i ) {
        arr[i] = (logits[i].view() - min_stm) * rcp; logits[i].mul_error(rcp); 
     }
   }
+
  
 /* 
   template <std::floating_point num> void abs_max( auto& logits ){

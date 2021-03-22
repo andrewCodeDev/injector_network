@@ -14,7 +14,7 @@
 
 template <
   std::floating_point FT
-> FT rand_gen(){ return 0.01 * ((FT)rand() / (FT)RAND_MAX * (FT)2 - (FT)1); }
+> FT rand_gen(){ return ((FT)rand() / (FT)RAND_MAX * (FT)2 - (FT)1); }
 
 template <
   class T
@@ -95,6 +95,8 @@ namespace sensor {
         //   return 0.0f; // otherwise it complains
         }
 
+      void reset_base() { signal = 0; state = false; }
+
       operator num() const { return signal; }
 
       std::size_t size() const { return data.size(); }
@@ -113,8 +115,11 @@ namespace sensor {
       auto& operator[](const std::size_t& i ) const { return data[i]; }
       auto& operator[](const std::size_t& i )       { return data[i]; }
 
+      operator bool() { return state; }
+
     protected:
       num signal{0};
+      bool state{false};
       std::vector<term_values> data;
   };
 
@@ -131,20 +136,25 @@ namespace sensor {
       immediate(const size_t& size) : sensor_base<num, imd_term_values<num>>(size){ };
 
       void calibrate(const num& error, num lr = 0.01 ){
+
+        this->reset_base();
+
         for( auto& m : this->data ) {
-          m.rate -= m.rate_upd * error * lr;
-          m.cntr -= m.cntr_upd * error * lr;
-          m.coef -= m.coef_upd * error * lr;
+          m.rate -= (m.rate_upd * error * lr);
+          m.cntr -= (m.cntr_upd * error * lr);
+          m.coef -= (m.coef_upd * error * lr);
 
           m.rate_upd = 0;
           m.cntr_upd = 0;
           m.coef_upd = 0;
         }
-        this->signal = 0;
+
       }
 
       void reset(){
-        this->signal = 0;
+
+        this->reset_base();
+
         for( auto& m : this->data ) {
           m.rate_upd = 0;
           m.cntr_upd = 0;
@@ -153,6 +163,8 @@ namespace sensor {
       }
 
       num operator()( const num& x ){
+
+        this->state = true;
        
         // memoize function calls;
         num exp_m, div_m;
@@ -185,11 +197,12 @@ namespace sensor {
 
       void calibrate(const num& error, num lr = 0.01 ){
         
-        this->signal = 0;
+        this->reset_base();
+
         for( auto& m : this->data ) {
-          m.rate -= m.rate_upd * error * lr;
-          m.cntr -= m.cntr_upd * error * lr;
-          m.coef -= m.coef_upd * error * lr;
+          m.rate -= (m.rate_upd * error * lr);
+          m.cntr -= (m.cntr_upd * error * lr);
+          m.coef -= (m.coef_upd * error * lr);
 
           m.rate_upd = 0;
           m.cntr_upd = 0;
@@ -201,9 +214,13 @@ namespace sensor {
 
           m.dx_mem   = 0;
         }
+
       }
 
       void reset(){
+
+        this->reset_base();
+
         for( auto& m : this->data ){
           m.rate_upd = 0;
           m.cntr_upd = 0;
@@ -215,10 +232,12 @@ namespace sensor {
 
           m.dx_mem   = 0;
         }
-        this->signal = 0;
       }
 
       num operator()( const num& x ){
+
+        this->state = true;
+
         for( auto& m : this->data ){
 
           num tmp = f(x + m.dx_mem, m.coef, m.rate, m.cntr);

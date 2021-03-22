@@ -3,105 +3,112 @@
 int main(void){
 srand(time(0));
 
-  encoder::packet<float> p_enc(29);
 
-  p_enc.open_file("/home/andrew/Documents/cpp_projects/scratch/algorithm/splicer_test/atlas_spl.txt");
+  // encoder::packet<float> p_enc(60);
 
-  sampler::indexical idx_sampler(p_enc.out_size(), 5);
+  // p_enc.open_file("/home/andrew/Documents/cpp_projects/scratch/algorithm/splicer_test/atlas_spl.txt");
+
+  
 
   // network ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  injector::shallow<float, p_enc.out_size(), logit::imd> inj_net(p_enc.out_size(), 3);
+  // injector::graph<float, 10, p_enc.out_size> inj_net(p_enc.out_size, 4);
 
-  std::string test_str{"Socialism is "}, out_str{""};
+  // std::string test_str{"Socialism is a value system "}, out_str{""};
   
   // char new_char;
 
-  for( std::size_t epoch{0}; epoch < 10; ++epoch ){
+/*
+//   for( std::size_t epoch{0}; epoch < 100; ++epoch ){
 
-  //   if( epoch % 1000 == 0 ){ 
+    // if( epoch % 1 == 0 ){ 
   
-  //     inj_net.reset_logits();
+    //   inj_net.reset_logits();
       
-  //     for( std::size_t i{0}; i < 20; ++i ){
+    //   for( std::size_t i{0}; i < 20; ++i ){
         
-  //       p_enc.encode(test_str);
+    //     p_enc.encode(test_str);
 
-  //       inj_net.forward(p_enc);
+    //     inj_net.forward(p_enc);
 
-  //       new_char = p_enc.idx_to_char( idx_sampler.sample_top(inj_net.output()) ); 
+    //     new_char = p_enc.idx_to_char( idx_sampler.sample_top(inj_net.output()) ); 
         
-  //       out_str += new_char;
+    //     out_str += new_char;
 
-  //       test_str = std::string(test_str, 1) + new_char;
-  //     }
+    //     test_str = std::string(test_str, 1) + new_char;
+    //   }
               
-  //     std::cout << '\n'; inj_net.display_output();
+    //   std::cout << '\n'; inj_net.display_output();
 
-  //     inj_net.reset_logits();
+    //   inj_net.reset_logits();
 
-  //     std::cout << out_str << '\n';
+    //   std::cout << test_str << new_char << '\n';
 
-  //     out_str = "";
+    //   out_str = "";
 
-  //     test_str = "Socialism is ";
-  //   }
+    //   test_str = "Socialism is a value system ";
+    // }
 
-  //   else {
-      p_enc.next_input();
+    // else {
 
-      p_enc.display_inp();
-      p_enc.display_trg();
+      // std::cout << '\n';
+      
+      // p_enc.next_input();
+      
+      // // p_enc.display_inp();
+      // // p_enc.display_trg();
 
-  //     inj_net.forward(p_enc);
+      // std::cout << inj_net.output().size() << '\n';
 
-  //     inj_net.calibrate(p_enc.get_trg());
-  //   }
+      // inj_net.forward(p_enc);
 
-  }
+      // inj_net.calibrate(p_enc);
 
-  // encoder::packet<float> p_enc1(29);
+      // inj_net.display_output();
+    // }
+
+  // }
+
+*/
+  
+
+
+  encoder::packet<float> p_enc1(29);
   // encoder::packet<float> p_enc2(29);
   // encoder::packet<float> p_enc3(29);
 
-  // p_enc1.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
+  p_enc1.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
   // p_enc2.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
   // p_enc3.open_file("/home/andrew/Documents/cpp_projects/scratch/injector_network/sample_txt/char_test.txt");
 
-  // sampler::indexical idx_sampler(p_enc1.out_size(), 5);
+  sampler::indexical idx_sampler(p_enc1.out_size, 5);
 
-  // // network ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // injector::shallow<float, p_enc1.out_size(), logit::seq> inj_net(p_enc1.out_size(), 3);
+  // network ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-  // // injector::bilayer<float, p_enc1.out_size(), logit::dyn, logit::seq> inj_net(p_enc1.out_size(), 3);
+  injector::graph<float, 10, p_enc1.out_size> inj_net(p_enc1.out_size, 3);
 
   // p_enc1.next_input();
-  
-  // p_enc2.next_input(); p_enc2.next_input();
-  // p_enc3.next_input(); p_enc3.next_input(); p_enc3.next_input();
 
-  // p_enc1.display_vocab();
+  p_enc1.encode("ShortQs");
 
-  // p_enc1.display_trg();
+  // std::cout << p_enc1.current_size() << '\n';
 
-  // // std::cout << p_enc1.current_size() << '\n';
+  for( auto& x : p_enc1 ) { std::cout << x.first << ' '; }
 
-  // for( auto& x : p_enc1 ) { std::cout << x.first << ' '; }
-
-  // std::cout << inj_net.output().size() << '\n';
-
+  std::cout << "\n\n";
  
-  // for( std::size_t epoch{0}; epoch < 20'000; ++epoch ){
+  inj_net.forward(p_enc1);
+  inj_net.calibrate(p_enc1);
 
-  //   inj_net.forward(p_enc1);
-  //   if(epoch % 1000 == 0){ inj_net.display_output(); std::cout << '\n'; }
-  //   inj_net.calibrate(p_enc1.get_trg());
+  // for( std::size_t epoch{0}; epoch < 1; ++epoch ){
 
-  //   inj_net.forward(p_enc2);
-  //   inj_net.calibrate(p_enc2.get_trg());
+    // if(epoch % 50 == 0){ inj_net.display_output(); std::cout << '\n'; }
+    // inj_net.calibrate(p_enc1);
 
-  //   inj_net.forward(p_enc3);
-  //   inj_net.calibrate(p_enc3.get_trg());
+    // inj_net.forward(p_enc2);
+    // inj_net.calibrate(p_enc2);
+
+    // inj_net.forward(p_enc3);
+    // inj_net.calibrate(p_enc3);
     
   // }
 
